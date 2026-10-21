@@ -68,6 +68,17 @@ function cards(items, formatter, empty) {
   return items?.length ? items.map((item) => `<div class="card ${item.severity === "caution" ? "warn" : ""}">${formatter(item)}</div>`).join("") : empty;
 }
 
+function groupContracts(entries) {
+  const grouped = new Map();
+  for (const entry of entries || []) {
+    const key = entry.contract.service;
+    const current = grouped.get(key) || { ...entry, lines: [] };
+    current.lines.push(entry.line);
+    grouped.set(key, current);
+  }
+  return [...grouped.values()];
+}
+
 $("run").addEventListener("click", async () => {
   const pastedSource = $("source").value;
   if (!loaded.length && !pastedSource.trim()) {
@@ -138,7 +149,11 @@ $("run").addEventListener("click", async () => {
     const amyMusicProof = amyMusic?.telemark?.byteIdentical ? "real TASM verified" : (amyMusic?.byteIdentical ? "byte-identical" : amyMusic?.status);
     const amyMusicMetric = amyMusic?.bytes ? `${amyMusic.bytes} Amy/OS7 ${amyMusic.outputDialect?.toUpperCase() || "native"} music ROM (${amyMusicProof})` : "no Amy/OS7 music ROM";
     $("metrics").innerHTML = [result.standalone ? "standalone browser" : "proof service", `${report.baseline.bytes} bytes baseline`, `${report.optimized?.bytes ?? report.specialized.bytes} ${report.optimization.effective}`, report.compact ? `${report.compact.bytes} compact (${report.compact.savedVsBaseline} saved, ${report.compact.status})` : "no compact candidate", os7Metric, pureMetric, tinyMetric, amyMusicMetric, result.compression?.summary || "compression preserved", report.fidelity.identical ? "byte-identical specialization" : "fidelity failed", `${report.optimized?.humanAnnotations?.length ?? 0} byte-role notes`, `${detected.origin} source`, `${result.dialect.toUpperCase()} ${detected.confidence} confidence`, `exports ${result.outputDialect.toUpperCase()}`].map((value) => `<span>${value}</span>`).join("");
-    $("contracts").innerHTML = cards(report.analysis.routineContracts, (item) => `<b>${item.contract.service}</b> at line ${item.line}<br>${item.contract.notes || "Contract known."}<br><small>clobbers: ${item.contract.clobbers.join(", ") || "none"}</small>`, "No known OS7/Amy wrapper calls.");
+    const generatedContracts = amyMusic?.analysis?.routineContracts;
+    const contractSource = generatedContracts?.length ? "Amy/OS7 generated ASM" : "analyzed input ASM";
+    const contractEntries = groupContracts(generatedContracts?.length ? generatedContracts : report.analysis.routineContracts);
+    $("contracts").innerHTML = `<div class="card"><b>ACTUAL CALLS · ${contractSource}</b><br>Only calls present in this artifact are listed below.</div>` +
+      cards(contractEntries, (item) => `<b>${item.contract.service}</b> · ${item.lines.length} call${item.lines.length === 1 ? "" : "s"} · line${item.lines.length === 1 ? "" : "s"} ${item.lines.join(", ")}<br>${item.contract.notes || "Contract known."}<br><small>clobbers: ${item.contract.clobbers.join(", ") || "none"}</small>`, "No known OS7/Amy calls occur in this artifact.");
     const engineered = report.os7Assessment?.transformations?.map((item) => ({
       title: item.kind === "STATIC_NAME_RECTANGLE_TO_PUTOBJ" ? "Static tile rectangle -> PUTOBJ" : `${item.kind.includes("READ") ? "Read" : "Write"} VRAM through OS7`,
       reason: item.kind === "STATIC_NAME_RECTANGLE_TO_PUTOBJ"
@@ -156,7 +171,8 @@ $("run").addEventListener("click", async () => {
       reason: `${item.status.replaceAll("_", " ")} · ${item.summary} Prerequisite: ${item.prerequisite}`,
       snippet: `${item.vector} · risk ${item.risk}${item.matchedLabels.length ? ` · labels ${item.matchedLabels.join(", ")}` : " · body signature"}`
     })) ?? [];
-    $("os7Guide").innerHTML = cards([...engineered, ...blocked, ...catalog, ...report.analysis.os7Guide], (item) => `<b>${item.title}</b><br>${item.reason}<pre>${item.snippet}</pre>`, "No OS7 migration opportunity recognized.");
+    $("os7Guide").innerHTML = `<div class="card"><b>MIGRATION OPPORTUNITIES · original CVBasic ASM</b><br>These are candidate substitutions and prerequisites, not calls already made by the input.</div>` +
+      cards([...engineered, ...blocked, ...catalog, ...report.analysis.os7Guide], (item) => `<b>${item.title}</b><br>${item.reason}<pre>${item.snippet}</pre>`, "No OS7 migration opportunity recognized.");
     const dialectEvidence = detected.evidence.filter((item) => item.dialect === result.dialect).map((item) => ({ severity: "information", code: `DIALECT +${item.points}`, message: item.message }));
     const deadCodeEvidence = report.analysis.reachability?.removable?.length ? [{ severity: "information", code: "UNREACHABLE_RUNTIME", message: `${report.analysis.reachability.removable.length} isolated code blocks are unreachable candidates: ${report.analysis.reachability.removable.slice(0, 12).map((item) => item.name).join(", ")}${report.analysis.reachability.removable.length > 12 ? "..." : ""}. They remain present until assembly and runtime proof passes.` }] : [];
     const profileEvidence = [{ severity: "information", code: "MICRO_RUNTIME_PROFILE", message: `Required: ${report.analysis.featureProfile?.required.map((item) => item.id).join(", ") || "startup only"}. Omitted: ${report.analysis.featureProfile?.omitted.map((item) => item.id).join(", ") || "none"}.` }];

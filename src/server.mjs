@@ -225,6 +225,7 @@ createServer(async (request, response) => {
               : (byteIdentical ? "REJECTED_REAL_TASM" : "REJECTED_DIALECT_FIDELITY"),
             asm: byteIdentical && externallyValid ? rendered : null,
             rom: byteIdentical && externallyValid ? renderedBinary.toString("base64") : null,
+            analysis: byteIdentical && externallyValid ? refineAssembly(rendered).report : null,
             outputDialect,
             byteIdentical,
             telemark,

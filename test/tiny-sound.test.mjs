@@ -4,6 +4,7 @@ import { convertCvbasicMusicToTinyAsm } from "../src/convert-cvbasic-music.mjs";
 import { buildCvbasicHybridMusicCandidate } from "../src/cvbasic-music-rom.mjs";
 import { synthesizeCvbasicMusicMicroRuntime } from "../src/cvbasic-music-micro-runtime.mjs";
 import { renderAssemblyDialect } from "../src/dialect-output.mjs";
+import { refineAssembly } from "../src/refiner.mjs";
 import { assembleAmysCVAssembly } from "../vendor/amyscvassembly/compilerCore.js";
 import { getOptimizationProfile } from "../vendor/studio-core/optimization.js";
 
@@ -163,6 +164,20 @@ tune_2: DATA BYTE 5
   assert.doesNotMatch(result.assembly, /call AMY_TINY_SOUND_TICK/i);
   assert.match(result.assembly, /ld hl,fixture_snd_table\s*\n\s*ld b,4\s*\n\s*call SET_SOUND_TABLE/i);
   assert.doesNotMatch(result.assembly, /music_hardware|music_play:/i);
+
+  const services = new Set(
+    refineAssembly(result.assembly).report.routineContracts.map((entry) => entry.contract.service)
+  );
+  for (const service of [
+    "MODE_1",
+    "FILL_VRAM",
+    "WRITE_VRAM",
+    "PLAY_SOUND_SLOT",
+    "UPDATE_CONTROLLERS",
+    "PLAY_SOUNDS"
+  ]) {
+    assert.ok(services.has(service), `generated wrapper must report its real ${service} calls`);
+  }
 });
 
 test("Amy/OS7 music synthesis fails closed on a different BASIC control shape", () => {

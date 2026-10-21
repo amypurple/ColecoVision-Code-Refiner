@@ -113,6 +113,7 @@ export async function runStaticPipeline(input) {
         bytes: occupiedBytes(outputMusic),
         outputDialect,
         byteIdentical: true,
+        analysis: refineAssembly(outputMusicAsm).report,
         report: { ...synthesized.report, optimization: "specialized-wrapper" }
       };
     } catch (error) {
