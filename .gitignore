@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+build/
+coverage/
+.env
+*.log
+*.lst
+*.rom
+*.bin
+*.map
+colecovision.rom
+ColecoVision.rom

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ColecoVision Code Refiner</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header><div><strong>COLECOVISION</strong><span>CODE REFINER</span></div><p>CVBasic and Z80 code, specialized and proven.</p></header>
+  <main>
+    <section class="toolbar">
+      <label class="drop" id="drop"><input id="files" type="file" accept=".bas,.bas.txt,.asm,.z80,.s" multiple><b>Open BAS / ASM</b><small>drop files anywhere</small></label>
+      <label>Dialect<select id="dialect"><option value="auto">Auto detect</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
+      <label>Output<select id="outputDialect"><option value="same">Same as input</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
+      <label>Wrapper<select id="runtime"><option value="auto">Auto</option><option value="cvbasic">CVBasic</option><option value="amy-os7">Amy / OS7</option></select></label>
+      <label>Optimize<select id="optimization"><option value="balanced">Balanced</option><option value="off">Off</option><option value="aggressive">Aggressive</option></select></label>
+      <label>Compression<select id="compression"><option value="preserve">Preserve</option><option value="pletter-zx0">Pletter to ZX0</option></select></label>
+      <label>Main file<select id="mainFile"></select></label>
+      <button id="run">REFINE + PROVE</button>
+      <div class="save-controls" aria-label="Save generated file">
+        <label>Save as<select id="saveAction" disabled>
+          <option value="optimized">Human optimized ASM</option>
+          <option value="compact">Compact CV/OS7 ASM</option>
+          <option value="refined">Specialized ASM</option>
+          <option value="os7">OS7-engineered ASM</option>
+          <option value="purecv">Pure CV micro-runtime ASM</option>
+          <option value="tinysound">Tiny Sound module</option>
+          <option value="amymusic">Amy/OS7 music ASM</option>
+          <option value="rom">Optimized ROM candidate</option>
+          <option value="compactrom">Compact CV/OS7 ROM</option>
+          <option value="os7rom">OS7-engineered ROM</option>
+          <option value="purecvrom">Pure CV micro-runtime ROM</option>
+          <option value="amymusicrom">Amy/OS7 music ROM</option>
+        </select></label>
+        <button class="icon-button" id="save" disabled title="Save selected result" aria-label="Save selected result"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5V3Zm3 2v5h8V5H8Zm0 10v4h8v-4H8Z"/></svg><b>Save</b></button>
+      </div>
+    </section>
+    <section class="metrics" id="metrics"><span>Awaiting source</span></section>
+    <nav class="view-tabs" aria-label="Mobile workspace panels">
+      <button class="is-active" data-view-tab="source">Source</button>
+      <button data-view-tab="output">Output</button>
+      <button data-view-tab="analysis">Analysis</button>
+    </nav>
+    <section class="workspace">
+      <article class="source-panel is-view-active" data-view-panel="source"><h2>Source <small>CVBasic or Z80 assembly</small></h2><textarea id="source" spellcheck="false"></textarea></article>
+      <article class="output-panel" data-view-panel="output">
+        <div class="panel-tabs" aria-label="Generated assembly">
+          <button data-output-tab="refined">Specialized</button>
+          <button class="is-active" data-output-tab="optimized">Human ASM</button>
+          <button data-output-tab="compact">Compact CV/OS7</button>
+          <button data-output-tab="os7">OS7 engineered</button>
+          <button data-output-tab="purecv">Pure CV</button>
+          <button data-output-tab="tinysound">Tiny Sound</button>
+          <button data-output-tab="amymusic">Amy music</button>
+        </div>
+        <textarea id="refined" data-output-panel="refined" spellcheck="false" readonly></textarea>
+        <textarea class="is-active" id="optimized" data-output-panel="optimized" spellcheck="false" readonly></textarea>
+        <textarea id="compact" data-output-panel="compact" spellcheck="false" readonly></textarea>
+        <textarea id="os7" data-output-panel="os7" spellcheck="false" readonly></textarea>
+        <textarea id="purecv" data-output-panel="purecv" spellcheck="false" readonly></textarea>
+        <textarea id="tinysound" data-output-panel="tinysound" spellcheck="false" readonly></textarea>
+        <textarea id="amymusic" data-output-panel="amymusic" spellcheck="false" readonly></textarea>
+      </article>
+      <aside class="analysis-panel" data-view-panel="analysis">
+        <div class="panel-tabs" aria-label="Analysis sections">
+          <button class="is-active" data-analysis-tab="findings">Proof</button>
+          <button data-analysis-tab="os7Guide">OS7 guide</button>
+          <button data-analysis-tab="contracts">Contracts</button>
+        </div>
+        <div class="analysis-content is-active" id="findings" data-analysis-panel="findings">No proof run.</div>
+        <div class="analysis-content" id="os7Guide" data-analysis-panel="os7Guide">No source analyzed.</div>
+        <div class="analysis-content" id="contracts" data-analysis-panel="contracts">No calls analyzed.</div>
+      </aside>
+    </section>
+  </main>
+  <div class="drop-overlay" id="dropOverlay" aria-hidden="true"><div><strong>DROP CVBASIC OR Z80 FILES</strong><span>CVBasic source, GASM80/TASM assembly and includes</span></div></div>
+  <script type="module" src="app.js?v=20261021-pipeline-options"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "colecovision-code-refiner",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "ColecoVision-aware CVBasic and Z80 assembly refinement, optimization and dialect conversion tool",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node test/run.mjs",
+    "smoke": "node test/real-cvbasic-smoke.mjs",
+    "build:face": "node src/build-face-fixture.mjs",
+    "test:tasm-real": "node test/real-tasm.mjs",
+    "test:tasm-music-real": "node test/real-tasm-music.mjs",
+    "test:gasm80-real": "node test/real-gasm80.mjs"
+  }
+}

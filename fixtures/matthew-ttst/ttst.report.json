@@ -1,0 +1,188 @@
+{
+  "format": "cvbasic-asm-refiner-report-v2",
+  "target": "colecovision",
+  "lineCount": 197,
+  "removedConditionalLines": 0,
+  "symbols": {
+    "CTRL_PORT": 191,
+    "DATA_PORT": 190,
+    "KONAMI": 0
+  },
+  "labels": [
+    {
+      "name": "START",
+      "line": 29
+    },
+    {
+      "name": "GRAPHICS_MODE_2",
+      "line": 31
+    },
+    {
+      "name": "MAIN_LOOP",
+      "line": 56
+    },
+    {
+      "name": "TEXT",
+      "line": 64
+    },
+    {
+      "name": "LOGO_PATTERNS",
+      "line": 69
+    },
+    {
+      "name": "LOGO_COLORS",
+      "line": 86
+    },
+    {
+      "name": "MODE_2_REGISTERS",
+      "line": 151
+    },
+    {
+      "name": "TheEnd",
+      "line": 161
+    },
+    {
+      "name": "SET_LINES",
+      "line": 165
+    },
+    {
+      "name": "SET_COLORS",
+      "line": 175
+    },
+    {
+      "name": "SLOW_COLORS",
+      "line": 188
+    }
+  ],
+  "calls": [
+    {
+      "line": 50,
+      "opcode": "CALL",
+      "target": "SET_LINES"
+    },
+    {
+      "line": 52,
+      "opcode": "CALL",
+      "target": "SET_LINES"
+    },
+    {
+      "line": 54,
+      "opcode": "CALL",
+      "target": "SET_LINES"
+    },
+    {
+      "line": 58,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    },
+    {
+      "line": 59,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    },
+    {
+      "line": 60,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    },
+    {
+      "line": 61,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    }
+  ],
+  "os7Calls": [],
+  "branches": [
+    {
+      "line": 62,
+      "opcode": "JR",
+      "target": "MAIN_LOOP"
+    },
+    {
+      "line": 162,
+      "opcode": "JP",
+      "target": "TheEnd"
+    },
+    {
+      "line": 189,
+      "opcode": "DJNZ",
+      "target": "SLOW_COLORS"
+    },
+    {
+      "line": 191,
+      "opcode": "JR",
+      "target": "SLOW_COLORS"
+    }
+  ],
+  "directVdpAccesses": [
+    {
+      "line": 39,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 42,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 166,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 169,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 177,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 180,
+      "source": "OUT (CTRL_PORT), A"
+    }
+  ],
+  "interruptControls": [],
+  "blockIoOperations": [
+    {
+      "line": 35,
+      "source": "OTIR"
+    },
+    {
+      "line": 46,
+      "source": "OTIR"
+    },
+    {
+      "line": 172,
+      "source": "OTIR"
+    },
+    {
+      "line": 184,
+      "source": "OTIR"
+    }
+  ],
+  "timingSensitiveOperations": [
+    {
+      "line": 189,
+      "source": "DJNZ SLOW_COLORS"
+    }
+  ],
+  "optimizationPolicy": {
+    "defaultLevel": "fidelity-only",
+    "eligibleForUnverifiedRewrite": false,
+    "requiresRuntimeValidation": true
+  },
+  "safetyFindings": [
+    {
+      "severity": "caution",
+      "code": "DIRECT_VDP_WITHOUT_OS7_INIT",
+      "message": "direct VDP I/O is used without a recognized OS7 initialization call; verify cold boot, interrupt, stack, RAM, and real-hardware behavior"
+    },
+    {
+      "severity": "information",
+      "code": "TIMING_SENSITIVE_CODE",
+      "message": "HALT or DJNZ timing is present; cycle-changing rewrites require runtime and timing validation"
+    }
+  ],
+  "unresolvedReferences": [],
+  "unresolvedConditions": [],
+  "structuralWarnings": []
+}

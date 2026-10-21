@@ -1,0 +1,274 @@
+{
+  "format": "cvbasic-asm-refiner-report-v2",
+  "target": "colecovision",
+  "lineCount": 274,
+  "removedConditionalLines": 0,
+  "symbols": {
+    "CTRL_PORT": 191,
+    "DATA_PORT": 190,
+    "KONAMI": 0,
+    "NBR_SPRITES": 3
+  },
+  "labels": [
+    {
+      "name": "START",
+      "line": 30
+    },
+    {
+      "name": "GRAPHICS_MODE_2",
+      "line": 50
+    },
+    {
+      "name": "MAIN_LOOP",
+      "line": 75
+    },
+    {
+      "name": "TEXT",
+      "line": 83
+    },
+    {
+      "name": "LOGO_PATTERNS",
+      "line": 88
+    },
+    {
+      "name": "LOGO_COLORS",
+      "line": 105
+    },
+    {
+      "name": "MODE_2_REGISTERS",
+      "line": 170
+    },
+    {
+      "name": "TheEnd",
+      "line": 180
+    },
+    {
+      "name": "SET_LINES",
+      "line": 184
+    },
+    {
+      "name": "SET_COLORS",
+      "line": 194
+    },
+    {
+      "name": "SLOW_COLORS",
+      "line": 207
+    },
+    {
+      "name": "SprAttrib",
+      "line": 214
+    },
+    {
+      "name": "star",
+      "line": 219
+    }
+  ],
+  "calls": [
+    {
+      "line": 31,
+      "opcode": "CALL",
+      "target": "$1f85"
+    },
+    {
+      "line": 32,
+      "opcode": "CALL",
+      "target": "$1fd6"
+    },
+    {
+      "line": 36,
+      "opcode": "CALL",
+      "target": "$1f82"
+    },
+    {
+      "line": 40,
+      "opcode": "CALL",
+      "target": "$1fdf"
+    },
+    {
+      "line": 42,
+      "opcode": "CALL",
+      "target": "$1fc1"
+    },
+    {
+      "line": 44,
+      "opcode": "CALL",
+      "target": "$1fc4"
+    },
+    {
+      "line": 48,
+      "opcode": "CALL",
+      "target": "$1fd9"
+    },
+    {
+      "line": 69,
+      "opcode": "CALL",
+      "target": "SET_LINES"
+    },
+    {
+      "line": 71,
+      "opcode": "CALL",
+      "target": "SET_LINES"
+    },
+    {
+      "line": 73,
+      "opcode": "CALL",
+      "target": "SET_LINES"
+    },
+    {
+      "line": 77,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    },
+    {
+      "line": 78,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    },
+    {
+      "line": 79,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    },
+    {
+      "line": 80,
+      "opcode": "CALL",
+      "target": "SET_COLORS"
+    }
+  ],
+  "os7Calls": [
+    {
+      "line": 31,
+      "opcode": "CALL",
+      "target": "$1f85",
+      "service": "MODE_1"
+    },
+    {
+      "line": 32,
+      "opcode": "CALL",
+      "target": "$1fd6",
+      "service": "TURN_OFF_SOUND"
+    },
+    {
+      "line": 36,
+      "opcode": "CALL",
+      "target": "$1f82",
+      "service": "FILL_VRAM"
+    },
+    {
+      "line": 40,
+      "opcode": "CALL",
+      "target": "$1fdf",
+      "service": "WRITE_VRAM"
+    },
+    {
+      "line": 42,
+      "opcode": "CALL",
+      "target": "$1fc1",
+      "service": "INIT_SPR_ORDER"
+    },
+    {
+      "line": 44,
+      "opcode": "CALL",
+      "target": "$1fc4",
+      "service": "WR_SPR_NM_TBL"
+    },
+    {
+      "line": 48,
+      "opcode": "CALL",
+      "target": "$1fd9",
+      "service": "WRITE_REGISTER"
+    }
+  ],
+  "branches": [
+    {
+      "line": 81,
+      "opcode": "JR",
+      "target": "MAIN_LOOP"
+    },
+    {
+      "line": 181,
+      "opcode": "JP",
+      "target": "TheEnd"
+    },
+    {
+      "line": 208,
+      "opcode": "DJNZ",
+      "target": "SLOW_COLORS"
+    },
+    {
+      "line": 210,
+      "opcode": "JR",
+      "target": "SLOW_COLORS"
+    }
+  ],
+  "directVdpAccesses": [
+    {
+      "line": 46,
+      "source": "out     ($be),a"
+    },
+    {
+      "line": 58,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 61,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 185,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 188,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 196,
+      "source": "OUT (CTRL_PORT), A"
+    },
+    {
+      "line": 199,
+      "source": "OUT (CTRL_PORT), A"
+    }
+  ],
+  "interruptControls": [],
+  "blockIoOperations": [
+    {
+      "line": 54,
+      "source": "OTIR"
+    },
+    {
+      "line": 65,
+      "source": "OTIR"
+    },
+    {
+      "line": 191,
+      "source": "OTIR"
+    },
+    {
+      "line": 203,
+      "source": "OTIR"
+    }
+  ],
+  "timingSensitiveOperations": [
+    {
+      "line": 208,
+      "source": "DJNZ SLOW_COLORS"
+    }
+  ],
+  "optimizationPolicy": {
+    "defaultLevel": "fidelity-only",
+    "eligibleForUnverifiedRewrite": false,
+    "requiresRuntimeValidation": true
+  },
+  "safetyFindings": [
+    {
+      "severity": "information",
+      "code": "TIMING_SENSITIVE_CODE",
+      "message": "HALT or DJNZ timing is present; cycle-changing rewrites require runtime and timing validation"
+    }
+  ],
+  "unresolvedReferences": [],
+  "unresolvedConditions": [],
+  "structuralWarnings": []
+}

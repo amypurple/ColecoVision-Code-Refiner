@@ -1,0 +1,701 @@
+const DEFAULT_MODULE_URL = new URL(
+  "../gearcoleco-test-core/gearcoleco-test-core.js?v=20261007-adam-dual-reset1",
+  import.meta.url
+);
+
+export const GEARCOLECO_TEST_REGION = Object.freeze({
+  NTSC: 0,
+  PAL: 1,
+  AUTO: -1
+});
+
+export const GEARCOLECO_VIDEO_CHIP = Object.freeze({
+  AUTO: 0,
+  TMS9918A: 1,
+  F18A: 2
+});
+
+export const GEARCOLECO_MACHINE = Object.freeze({ AUTO: 0, COLECOVISION: 1, ADAM: 2 });
+export const GEARCOLECO_ADAM_BOOT = Object.freeze({ COMPUTER: 0, CARTRIDGE: 1 });
+export const GEARCOLECO_ADAM_MEDIA = Object.freeze({ DATA_PACK: 1, DISK: 2 });
+export const GEARCOLECO_ADAM_SLOT = Object.freeze({ DISK_1: 0, DISK_2: 1, DATA_PACK_1: 2, DATA_PACK_2: 3 });
+export const GEARCOLECO_CARTRIDGE_TYPE = Object.freeze({ STANDARD: 0, MEGACART: 1, ACTIVISION: 2, OCM: 3, UNSUPPORTED: 4 });
+
+export function detectColecoRegionFromBios(bytes) {
+  const bios = requireBytes(bytes, "BIOS");
+  return bios[0x69] === 0x32
+    ? GEARCOLECO_TEST_REGION.PAL
+    : GEARCOLECO_TEST_REGION.NTSC;
+}
+
+export const GEARCOLECO_TEST_INPUT = Object.freeze({
+  UP: 1 << 0,
+  DOWN: 1 << 1,
+  LEFT: 1 << 2,
+  RIGHT: 1 << 3,
+  FIRE_RIGHT: 1 << 4,
+  FIRE_LEFT: 1 << 5,
+  KEYPAD_2: 1 << 6,
+  KEYPAD_1: 1 << 7,
+  KEYPAD_ASTERISK: 1 << 8,
+  KEYPAD_HASH: 1 << 9,
+  KEYPAD_3: 1 << 10,
+  KEYPAD_4: 1 << 11,
+  KEYPAD_5: 1 << 12,
+  KEYPAD_6: 1 << 13,
+  KEYPAD_7: 1 << 14,
+  KEYPAD_8: 1 << 15,
+  KEYPAD_0: 1 << 16,
+  KEYPAD_9: 1 << 17,
+  BLUE: 1 << 18,
+  PURPLE: 1 << 19
+});
+
+function requireBytes(value, label) {
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  throw new TypeError(`${label} must be an ArrayBuffer or Uint8Array.`);
+}
+
+export class GearcolecoTestCore {
+  constructor(module) {
+    this.module = module;
+    this.destroyed = false;
+    this.biosRegion = GEARCOLECO_TEST_REGION.NTSC;
+    this.region = GEARCOLECO_TEST_REGION.NTSC;
+  }
+
+  static async create({ seed = 0, moduleUrl = DEFAULT_MODULE_URL } = {}) {
+    const imported = await import(moduleUrl.href || String(moduleUrl));
+    const factory = imported.default;
+    const module = await factory({
+      locateFile(path) {
+        return new URL(path, moduleUrl).href;
+      }
+    });
+    if (module._gcw_create(seed >>> 0) !== 1) {
+      throw new Error("GearColeco test core initialization failed.");
+    }
+    return new GearcolecoTestCore(module);
+  }
+
+  assertAlive() {
+    if (this.destroyed) throw new Error("GearColeco test core is destroyed.");
+  }
+
+  withInputBytes(value, label, callback) {
+    this.assertAlive();
+    const bytes = requireBytes(value, label);
+    const pointer = this.module._malloc(bytes.byteLength || 1);
+    try {
+      this.module.HEAPU8.set(bytes, pointer);
+      return callback(pointer, bytes.byteLength);
+    } finally {
+      this.module._free(pointer);
+    }
+  }
+
+  withOutputBytes(size, callback) {
+    this.assertAlive();
+    const pointer = this.module._malloc(size || 1);
+    try {
+      const written = callback(pointer, size) >>> 0;
+      return this.module.HEAPU8.slice(pointer, pointer + written);
+    } finally {
+      this.module._free(pointer);
+    }
+  }
+
+  loadBios(bytes) {
+    const bios = requireBytes(bytes, "BIOS");
+    this.biosRegion = detectColecoRegionFromBios(bios);
+    return this.withInputBytes(bios, "BIOS", (pointer, size) => {
+      if (this.module._gcw_load_bios(pointer, size) !== 1) {
+        throw new Error(`GearColeco rejected BIOS (${size} bytes; expected 8192).`);
+      }
+      return true;
+    });
+  }
+
+  loadRom(bytes, { region = GEARCOLECO_TEST_REGION.AUTO } = {}) {
+    const resolvedRegion = region === GEARCOLECO_TEST_REGION.AUTO ? this.biosRegion : region;
+    if (resolvedRegion !== GEARCOLECO_TEST_REGION.NTSC && resolvedRegion !== GEARCOLECO_TEST_REGION.PAL) {
+      throw new RangeError(`Invalid GearColeco region ${region}.`);
+    }
+    return this.withInputBytes(bytes, "ROM", (pointer, size) => {
+      if (this.module._gcw_load_rom(pointer, size, resolvedRegion) !== 1) {
+        throw new Error(`GearColeco rejected ROM (${size} bytes).`);
+      }
+      this.region = this.module._gcw_get_region() | 0;
+      return true;
+    });
+  }
+
+  getRegion() {
+    this.assertAlive();
+    this.region = this.module._gcw_get_region() | 0;
+    return this.region;
+  }
+
+  getRegionName() {
+    return this.getRegion() === GEARCOLECO_TEST_REGION.PAL ? "PAL" : "NTSC";
+  }
+
+  getFramesPerSecond() {
+    return this.getRegion() === GEARCOLECO_TEST_REGION.PAL ? 50 : 60;
+  }
+
+  getCyclesPerFrame() {
+    return this.getRegion() === GEARCOLECO_TEST_REGION.PAL ? 228 * 313 : 228 * 262;
+  }
+
+  reset({ preserveRam = false } = {}) {
+    this.assertAlive();
+    if (this.module._gcw_reset(preserveRam ? 1 : 0) !== 1) {
+      throw new Error("GearColeco reset failed.");
+    }
+  }
+
+  runFrame() {
+    this.assertAlive();
+    const result = this.module._gcw_run_frame();
+    if (result < 0) throw new Error("GearColeco frame execution failed.");
+    return {
+      breakpointHit: result === 1,
+      pc: this.module._gcw_get_pc() & 0xFFFF
+    };
+  }
+
+  stepInstruction() {
+    this.assertAlive();
+    const result = this.module._gcw_step_instruction();
+    if (result < 0) throw new Error("GearColeco instruction step failed.");
+    return {
+      breakpointHit: false,
+      pc: this.module._gcw_get_pc() & 0xFFFF,
+      interruptType: this.module._gcw_get_last_step_interrupt() | 0
+    };
+  }
+
+
+  beginRoutineProfile({ target, entrySp, returnAddress, exitAddresses = [] }) {
+    this.assertAlive();
+    const exits = Uint16Array.from(exitAddresses, (address) => address & 0xFFFF);
+    return this.withInputBytes(exits, "profile exits", (pointer) => {
+      if (this.module._gcw_profile_begin(
+        target.start >>> 0,
+        target.end >>> 0,
+        target.bank == null ? -1 : target.bank | 0,
+        entrySp & 0xFFFF,
+        returnAddress & 0xFFFF,
+        pointer,
+        exits.length
+      ) !== 1) {
+        throw new Error("GearColeco could not start routine profiling.");
+      }
+      return true;
+    });
+  }
+
+  runRoutineProfileBatch(maxInstructions = 100000) {
+    this.assertAlive();
+    const status = this.module._gcw_profile_run_batch(maxInstructions >>> 0);
+    if (status < 0) {
+      if (status === -2) throw new Error("Profiler clock discontinuity detected; sample discarded.");
+      throw new Error("GearColeco native routine profiling failed.");
+    }
+    const pointer = this.module._malloc(13 * 4);
+    try {
+      if (this.module._gcw_profile_get_results(pointer, 13) !== 13) {
+        throw new Error("Could not read GearColeco routine profile results.");
+      }
+      const words = new Uint32Array(this.module.HEAPU8.buffer, pointer, 13).slice();
+      const wide = (lowIndex) => words[lowIndex] + words[lowIndex + 1] * 0x100000000;
+      const completionKind = words[11] === 1 ? "return" : words[11] === 2 ? "transfer" : "";
+      return {
+        complete: status === 1,
+        active: words[12] === 1,
+        instructions: words[0],
+        inclusiveCycles: wide(1),
+        inRangeCycles: wide(3),
+        interruptCycles: wide(5),
+        nmiCycles: wide(7),
+        irqCycles: wide(9),
+        completionKind
+      };
+    } finally {
+      this.module._free(pointer);
+    }
+  }
+
+  cancelRoutineProfile() {
+    this.assertAlive();
+    this.module._gcw_profile_cancel();
+  }
+
+  setControllerMask(controller, mask) {
+    this.assertAlive();
+    if (this.module._gcw_set_controller_mask(controller, mask >>> 0) !== 1) {
+      throw new RangeError(`Invalid GearColeco controller index ${controller}.`);
+    }
+  }
+
+  setSpinner(controller, movement) {
+    this.assertAlive();
+    if (this.module._gcw_set_spinner(controller, movement | 0) !== 1) {
+      throw new RangeError(`Invalid GearColeco spinner index ${controller}.`);
+    }
+  }
+
+  saveState() {
+    this.assertAlive();
+    const size = this.module._gcw_save_state_size() >>> 0;
+    if (!size) throw new Error("GearColeco could not determine save-state size.");
+    const state = this.withOutputBytes(size, (pointer, capacity) => {
+      return this.module._gcw_save_state(pointer, capacity);
+    });
+    if (state.byteLength !== size) {
+      throw new Error(`GearColeco save-state size changed (${size} -> ${state.byteLength}).`);
+    }
+    return state;
+  }
+
+  loadState(bytes, { controllerMasks = [0, 0] } = {}) {
+    return this.withInputBytes(bytes, "save state", (pointer, size) => {
+      if (this.module._gcw_load_state(pointer, size) !== 1) {
+        throw new Error("GearColeco rejected the save state.");
+      }
+      for (let controller = 0; controller < 2; ++controller) {
+        const mask = controllerMasks[controller] >>> 0;
+        if (this.module._gcw_sync_controller_mask(controller, mask) !== 1) {
+          throw new Error(`Could not restore controller ${controller} tracking.`);
+        }
+      }
+      return true;
+    });
+  }
+
+  getFramebuffer() {
+    const framebuffer = this.getFramebufferView();
+    return { ...framebuffer, pixels: framebuffer.pixels.slice() };
+  }
+
+  loadAdamFirmware({ os7, eos, smartwriter }) {
+    const images = [
+      requireBytes(os7, "ADAM OS-7"),
+      requireBytes(eos, "ADAM EOS"),
+      requireBytes(smartwriter, "ADAM SmartWriter")
+    ];
+    const pointers = images.map((bytes) => this.module._malloc(bytes.byteLength || 1));
+    try {
+      images.forEach((bytes, index) => this.module.HEAPU8.set(bytes, pointers[index]));
+      if (this.module._gcw_load_adam_firmware(
+        pointers[0], images[0].byteLength,
+        pointers[1], images[1].byteLength,
+        pointers[2], images[2].byteLength
+      ) !== 1) throw new Error("GearColeco rejected the ADAM firmware set.");
+    } finally {
+      pointers.forEach((pointer) => this.module._free(pointer));
+    }
+  }
+
+  startAdam({ cartridge = false } = {}) {
+    this.assertAlive();
+    if (this.module._gcw_start_adam(cartridge ? 1 : 0) !== 1) {
+      throw new Error("GearColeco could not start Coleco ADAM.");
+    }
+  }
+
+  resetAdam({ cartridge = false } = {}) {
+    this.assertAlive();
+    if (this.module._gcw_reset_adam(cartridge ? GEARCOLECO_ADAM_BOOT.CARTRIDGE : GEARCOLECO_ADAM_BOOT.COMPUTER) !== 1) {
+      throw new Error(cartridge
+        ? "GearColeco could not reset ADAM in ColecoVision cartridge mode."
+        : "GearColeco could not reset ADAM in computer mode.");
+    }
+  }
+
+  getAdamBootMode() {
+    this.assertAlive();
+    return this.module._gcw_get_adam_boot_mode() | 0;
+  }
+
+  getMachine() {
+    this.assertAlive();
+    return this.module._gcw_get_machine() | 0;
+  }
+
+  loadAdamMedia(bytes, { slot, type, writeProtected = true }) {
+    return this.withInputBytes(bytes, "ADAM media", (pointer, size) => {
+      if (this.module._gcw_load_adam_media(slot, type, pointer, size, writeProtected ? 1 : 0) !== 1) {
+        throw new Error("GearColeco rejected the ADAM media image.");
+      }
+      return true;
+    });
+  }
+
+  ejectAdamMedia(slot) {
+    this.assertAlive();
+    this.module._gcw_eject_adam_media(slot);
+  }
+
+  readAdamMedia(slot) {
+    this.assertAlive();
+    const required = this.module._gcw_read_adam_media(slot, 0, 0) >>> 0;
+    if (!required) throw new Error("No ADAM media is mounted in that slot.");
+    return this.withOutputBytes(required, (pointer, capacity) => {
+      return this.module._gcw_read_adam_media(slot, pointer, capacity) >>> 0;
+    });
+  }
+
+  setAdamKey(key, pressed) {
+    this.assertAlive();
+    if (this.module._gcw_adam_key(key, pressed ? 1 : 0) !== 1) {
+      throw new RangeError(`Invalid ADAM key ${key}.`);
+    }
+  }
+
+  setVideoChip(chip) {
+    this.assertAlive();
+    const profiles = { auto: 0, tms9918a: 1, f18a: 2 };
+    const value = typeof chip === "number" ? chip : profiles[String(chip).toLowerCase()];
+    if (!Number.isInteger(value) || value < 0 || value > 2) {
+      throw new RangeError(`Unknown video chip '${chip}'.`);
+    }
+    if (this.module._gcw_set_video_chip(value) !== 1) {
+      throw new Error("GearColeco could not select the video chip.");
+    }
+  }
+
+  setAdamSerialProfile(profile) {
+    this.assertAlive();
+    const profiles = { none: 0, adamlink: 1, eve: 2, micro: 3, microinnovations: 3 };
+    const value = typeof profile === "number" ? profile : profiles[String(profile).toLowerCase()];
+    if (!Number.isInteger(value) || value < 0 || value > 3) {
+      throw new RangeError(`Unknown ADAM serial profile '${profile}'.`);
+    }
+    if (this.module._gcw_set_adam_serial_profile(value) !== 1) {
+      throw new Error("GearColeco could not configure the ADAM serial profile.");
+    }
+  }
+
+  setAdamSoundExpansion(profile) {
+    this.assertAlive();
+    const profiles = { none: 0, enhancer: 1, "sound-enhancer": 1, sgm: 2, "opcode-sgm": 2 };
+    const value = typeof profile === "number" ? profile : profiles[String(profile).toLowerCase()];
+    if (!Number.isInteger(value) || value < 0 || value > 2) {
+      throw new RangeError(`Unknown ADAM sound expansion '${profile}'.`);
+    }
+    if (this.module._gcw_set_adam_sound_expansion(value) !== 1) {
+      throw new Error("GearColeco could not configure the ADAM sound expansion.");
+    }
+  }
+
+  setAdamSerialLoopback(enabled) {
+    this.assertAlive();
+    if (this.module._gcw_set_adam_serial_loopback(enabled ? 1 : 0) !== 1) {
+      throw new Error("GearColeco could not configure ADAM serial loopback.");
+    }
+  }
+
+  setAdamSerialCarrier(present) {
+    this.assertAlive();
+    if (this.module._gcw_set_adam_serial_carrier(present ? 1 : 0) !== 1) {
+      throw new Error("GearColeco could not configure the ADAM serial carrier.");
+    }
+  }
+
+  setAdamSerialHayes(enabled) {
+    this.assertAlive();
+    if (this.module._gcw_set_adam_serial_hayes(enabled ? 1 : 0) !== 1) {
+      throw new Error("GearColeco could not configure Hayes modem emulation.");
+    }
+  }
+
+  setAdamSerialTiming(baud = 0, frameBits = 10) {
+    this.assertAlive();
+    if (this.module._gcw_set_adam_serial_timing(baud, frameBits) !== 1) throw new Error("GearColeco could not configure serial timing.");
+  }
+
+  injectAdamSerialReceive(bytes) {
+    this.assertAlive();
+    return this.withInputBytes(bytes, "ADAM serial receive data", (pointer, size) => {
+      if (this.module._gcw_inject_adam_serial_rx(pointer, size) !== 1) {
+        throw new Error("GearColeco could not inject ADAM serial data.");
+      }
+      return size;
+    });
+  }
+
+  readAdamSerialTransmit(consume = true) {
+    this.assertAlive();
+    const size = this.module._gcw_read_adam_serial_tx(0, 0, 0) >>> 0;
+    if (size === 0) return new Uint8Array(0);
+    const pointer = this.module._malloc(size);
+    try {
+      const count = this.module._gcw_read_adam_serial_tx(pointer, size, consume ? 1 : 0) >>> 0;
+      return this.module.HEAPU8.slice(pointer, pointer + count);
+    } finally {
+      this.module._free(pointer);
+    }
+  }
+
+  debugAdamPortIn(port) {
+    this.assertAlive();
+    return this.module._gcw_debug_adam_port_in(port) | 0;
+  }
+
+  debugAdamPortOut(port, value) {
+    this.assertAlive();
+    if (this.module._gcw_debug_adam_port_out(port, value) !== 1) {
+      throw new RangeError(`Invalid ADAM port write ${port}:${value}.`);
+    }
+  }
+
+  getVideoChip() {
+    this.assertAlive();
+    return this.module._gcw_get_video_chip() | 0;
+  }
+
+  setVoiceModuleEnabled(enabled) {
+    this.assertAlive();
+    if (this.module._gcw_set_sp0256_enabled(enabled ? 1 : 0) !== 1) {
+      throw new Error("GearColeco could not configure the SP0256 voice module.");
+    }
+  }
+
+  setVoiceModuleProfile(profile) {
+    this.assertAlive();
+    const profiles = { absent: 0, lundy: 1, eve: 2 };
+    const type = typeof profile === "number" ? profile : profiles[String(profile).toLowerCase()];
+    if (!Number.isInteger(type) || type < 0 || type > 2) {
+      throw new RangeError(`Unknown voice-module profile '${profile}'.`);
+    }
+    if (this.module._gcw_set_voice_module_type(type) !== 1) {
+      throw new Error("GearColeco could not configure the voice-module profile.");
+    }
+  }
+
+  getFramebufferView() {
+    this.assertAlive();
+    const width = this.module._gcw_get_framebuffer_width() | 0;
+    const height = this.module._gcw_get_framebuffer_height() | 0;
+    const pointer = this.module._gcw_get_framebuffer() >>> 0;
+    const pixels = this.module.HEAPU16.subarray(
+      pointer >>> 1,
+      (pointer >>> 1) + width * height
+    );
+    return { width, height, format: "rgb565", pixels };
+  }
+
+  getAudioFrame() {
+    this.assertAlive();
+    const sampleRate = this.module._gcw_get_audio_sample_rate() | 0;
+    const sampleCount = this.module._gcw_get_audio_sample_count() | 0;
+    const pointer = this.module._gcw_get_audio_buffer() >>> 0;
+    const samples = this.module.HEAP16.slice(
+      pointer >>> 1,
+      (pointer >>> 1) + sampleCount
+    );
+    return {
+      sampleRate,
+      channels: 2,
+      frameCount: sampleCount >>> 1,
+      samples
+    };
+  }
+  getPc() {
+    this.assertAlive();
+    return this.module._gcw_get_pc() & 0xFFFF;
+  }
+
+  getRomBank() {
+    this.assertAlive();
+    if (typeof this.module._gcw_get_rom_bank !== "function") return null;
+    const bank = this.module._gcw_get_rom_bank() | 0;
+    return bank < 0 ? null : bank;
+  }
+
+  getCartridgeType() {
+    this.assertAlive();
+    if (typeof this.module._gcw_get_cartridge_type !== "function") return null;
+    const type = this.module._gcw_get_cartridge_type() | 0;
+    return type < 0 ? null : type;
+  }
+
+  isMegaCart() {
+    return this.getCartridgeType() === GEARCOLECO_CARTRIDGE_TYPE.MEGACART;
+  }
+
+  getSp() {
+    this.assertAlive();
+    return this.module._gcw_get_sp() & 0xFFFF;
+  }
+
+  
+  getCpuState() {
+    const bytes = this.withOutputBytes(32, (pointer) => {
+      return this.module._gcw_get_cpu_state(pointer, 16) * 2;
+    });
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const word = (index) => view.getUint16(index * 2, true);
+    const flags = word(14);
+    return {
+      af: word(0), bc: word(1), de: word(2), hl: word(3),
+      af2: word(4), bc2: word(5), de2: word(6), hl2: word(7),
+      ix: word(8), iy: word(9), sp: word(10), pc: word(11), wz: word(12),
+      i: word(13) >>> 8, r: word(13) & 0xFF,
+      interruptMode: flags & 3,
+      iff1: Boolean(flags & 0x0100),
+      iff2: Boolean(flags & 0x0200),
+      halted: Boolean(flags & 0x0400)
+    };
+  }
+
+  getAdamMioc() {
+    this.assertAlive();
+    return this.module._gcw_get_adam_mioc();
+  }
+
+  getAdamNetSummary() {
+    this.assertAlive();
+    const serialBase = 12 + (15 * 5);
+    const words = serialBase + 16;
+    const bytes = this.withOutputBytes(words * 4, (pointer) => {
+      return this.module._gcw_get_adam_net_summary(pointer, words) * 4;
+    });
+    const data = new Uint32Array(bytes.buffer, bytes.byteOffset, words);
+    return {
+      controllerState: data[0], pcbAddress: data[1], pcbStatus: data[2], dcbCount: data[3],
+      transfer: {
+        active: Boolean(data[4]), command: data[5], error: data[6], device: data[7],
+        block: data[8], buffer: data[9], length: data[10], cyclesUntilEvent: data[11]
+      },
+      dcbs: Array.from({ length: 15 }, (_, index) => {
+        const base = 12 + index * 5;
+        return { status: data[base], device: data[base + 1], block: data[base + 2], buffer: data[base + 3], length: data[base + 4] };
+      }),
+      serial: {
+        profile: data[serialBase], soundExpansion: data[serialBase + 1],
+        loopback: Boolean(data[serialBase + 2]), carrier: Boolean(data[serialBase + 3]),
+        hayes: Boolean(data[serialBase + 4]), rxSize: data[serialBase + 5],
+        txSize: data[serialBase + 6], commandLength: data[serialBase + 7],
+        registers: Array.from(data.slice(serialBase + 8, serialBase + 16))
+      }
+    };
+  }
+
+  getAdamPrinterData() {
+    this.assertAlive();
+    const required = this.module._gcw_get_adam_printer_data(0, 0);
+    if (!required) return new Uint8Array(0);
+    return this.withOutputBytes(required, (pointer, capacity) => {
+      return this.module._gcw_get_adam_printer_data(pointer, capacity);
+    });
+  }
+
+  clearAdamPrinterData() {
+    this.assertAlive();
+    this.module._gcw_clear_adam_printer_data();
+  }
+
+  disassemble(address) {
+    const bytes = this.withOutputBytes(73, (pointer, capacity) => {
+      return this.module._gcw_disassemble(address & 0xFFFF, pointer, capacity);
+    });
+    const size = bytes[0] || 1;
+    let end = 9;
+    while (end < bytes.length && bytes[end]) end += 1;
+    return {
+      address: address & 0xFFFF,
+      size,
+      jump: Boolean(bytes[1]),
+      opcodes: Array.from(bytes.slice(2, 2 + Math.min(size, 7))),
+      text: new TextDecoder().decode(bytes.slice(9, end)).replace(/\{[^}]*\}/g, "")
+    };
+  }
+getMasterClockCycles() {
+    this.assertAlive();
+    const pointer = this.module._malloc(8);
+    try {
+      if (this.module._gcw_get_master_clock(pointer, 2) !== 2) {
+        throw new Error("Could not read GearColeco master clock.");
+      }
+      const view = new DataView(this.module.HEAPU8.buffer, pointer, 8);
+      const low = view.getUint32(0, true);
+      const high = view.getUint32(4, true);
+      return high * 0x100000000 + low;
+    } finally {
+      this.module._free(pointer);
+    }
+  }
+
+  readRam(address, size) {
+    return this.withOutputBytes(size, (pointer, capacity) => {
+      return this.module._gcw_read_ram(address & 0xFFFF, pointer, capacity);
+    });
+  }
+
+  writeRam(address, bytes) {
+    this.assertAlive();
+    const input = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+    const pointer = this.module._malloc(input.length || 1);
+    try {
+      this.module.HEAPU8.set(input, pointer);
+      const written = this.module._gcw_write_ram(address & 0xFFFF, pointer, input.length);
+      if (written !== input.length) throw new Error(`Could not write ${input.length} RAM bytes at $${(address & 0xFFFF).toString(16)}.`);
+    } finally {
+      this.module._free(pointer);
+    }
+  }
+
+  readAdamMainRam(address, size) {
+    return this.withOutputBytes(size, (pointer, capacity) => {
+      return this.module._gcw_read_adam_main_ram(address & 0xFFFF, pointer, capacity);
+    });
+  }
+
+  readAdamExpansionRam(address, size) {
+    return this.withOutputBytes(size, (pointer, capacity) => {
+      return this.module._gcw_read_adam_expansion_ram(address & 0xFFFF, pointer, capacity);
+    });
+  }
+
+  readVram(address, size) {
+    return this.withOutputBytes(size, (pointer, capacity) => {
+      return this.module._gcw_read_vram(address & 0x3FFF, pointer, capacity);
+    });
+  }
+
+  getVdpRegisters() {
+    return this.withOutputBytes(8, (pointer, capacity) => {
+      return this.module._gcw_get_vdp_registers(pointer, capacity);
+    });
+  }
+
+  setExecuteBreakpoint(address) {
+    this.assertAlive();
+    if (this.module._gcw_set_execute_breakpoint(address & 0xFFFF) !== 1) {
+      throw new Error(`Could not set execute breakpoint at $${address.toString(16)}.`);
+    }
+  }
+
+  clearExecuteBreakpoint(address) {
+    this.assertAlive();
+    this.module._gcw_clear_execute_breakpoint(address & 0xFFFF);
+  }
+
+  clearAllBreakpoints() {
+    this.assertAlive();
+    this.module._gcw_clear_all_breakpoints();
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.module._gcw_destroy();
+    this.destroyed = true;
+  }
+}
