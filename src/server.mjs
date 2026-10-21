@@ -32,6 +32,17 @@ const telemarkTasmExecutable = process.env.TASM_EXECUTABLE
   : await findBundledTelemarkTasm();
 const zx0VramDecoder = await readFile(resolve(import.meta.dirname, "../vendor/compression/zx0_vram.asm"), "utf8");
 
+function looksLikeCvbasicSource(source) {
+  const tests = [
+    /^\s*(?:MODE|SCREEN|CLS|PRINT|DEFINE|DIM|BITMAP|SPRITE|MUSIC|SOUND|PLAY)\b/im,
+    /^\s*(?:IF\b.*\bTHEN|FOR\b.*\bTO|DO\s*$|LOOP\s*$|WHILE\b|GOTO\b)/im,
+    /^\s*[A-Za-z_][\w$]*\s*:\s*(?:DATA|MUSIC)\b/im,
+    /\bCONT\d?\.(?:UP|DOWN|LEFT|RIGHT|BUTTON\d*)\b/i,
+    /\b(?:PRINT|PUT|VPOKE|VPEEK)\s+AT\b/i
+  ];
+  return tests.filter((pattern) => pattern.test(source)).length >= 2;
+}
+
 async function compileBasic(source) {
   const work = await mkdtemp(join(tmpdir(), "cvbasic-refiner-web-"));
   try {
@@ -89,7 +100,7 @@ createServer(async (request, response) => {
       const files = Object.fromEntries((input.files ?? []).map((file) => [file.name, file.text]));
       const mainName = input.main || input.files?.[0]?.name;
       if (!mainName || !files[mainName]) throw new Error("select a main assembly file");
-      const isBasic = /\.bas(?:\.txt)?$/i.test(mainName);
+      const isBasic = /\.bas(?:\.txt)?$/i.test(mainName) || (/\.txt$/i.test(mainName) && looksLikeCvbasicSource(files[mainName]));
       const runtimePolicy = ["auto", "cvbasic", "amy-os7"].includes(input.runtime) ? input.runtime : "auto";
       const optimization = ["off", "balanced", "aggressive"].includes(input.optimization) ? input.optimization : "balanced";
       const optimizationProfile = getOptimizationProfile(optimization, files[mainName]);

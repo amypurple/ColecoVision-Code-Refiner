@@ -10,7 +10,7 @@
   <header><div><strong>COLECOVISION</strong><span>CODE REFINER</span></div><p>CVBasic and Z80 code, specialized and proven.</p></header>
   <main>
     <section class="toolbar">
-      <label class="drop" id="drop"><input id="files" type="file" accept=".bas,.bas.txt,.asm,.z80,.s" multiple><b>Open BAS / ASM</b><small>drop files anywhere</small></label>
+      <label class="drop" id="drop"><input id="files" type="file" accept=".bas,.txt,.asm,.z80,.s" multiple><b>Open BAS / ASM</b><small>drop listings anywhere</small></label>
       <label>ASM dialect<select id="dialect"><option value="auto">Auto detect</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Output<select id="outputDialect"><option value="same">Same as input</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Wrapper<select id="runtime"><option value="auto">Auto</option><option value="cvbasic">CVBasic</option><option value="amy-os7">Amy / OS7</option></select></label>
@@ -75,6 +75,6 @@
     </section>
   </main>
   <div class="drop-overlay" id="dropOverlay" aria-hidden="true"><div><strong>DROP CVBASIC OR Z80 FILES</strong><span>CVBasic source, GASM80/TASM assembly and includes</span></div></div>
-  <script type="module" src="app.js?v=20261021-cvbasic-paste"></script>
+  <script type="module" src="app.js?v=20261021-cvbasic-drop"></script>
 </body>
 </html>

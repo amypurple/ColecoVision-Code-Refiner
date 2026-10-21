@@ -26,14 +26,19 @@ async function reportServerCapabilities() {
 }
 
 async function accept(fileList) {
-  const accepted = [...fileList].filter((file) => /(?:\.bas(?:\.txt)?|\.(?:asm|z80|s))$/i.test(file.name));
-  loaded = await Promise.all(accepted.map(async (file) => ({ name: file.webkitRelativePath || file.name, text: await file.text() })));
+  const candidates = [...fileList].filter((file) => /\.(?:bas|txt|asm|z80|s)$/i.test(file.name));
+  loaded = await Promise.all(candidates.map(async (file) => ({ name: file.webkitRelativePath || file.name, text: await file.text() })));
+  loaded = loaded.filter((file) =>
+    /(?:\.bas(?:\.txt)?|\.(?:asm|z80|s))$/i.test(file.name) ||
+    (/\.txt$/i.test(file.name) && (looksLikeCvbasic(file.text) || /\b(?:org|equ|db|dw|ld|jp|call)\b/i.test(file.text))));
   $("mainFile").replaceChildren(...loaded.map((file) => new Option(file.name, file.name)));
   const likelyMain = loaded.find((file) => /\.bas(?:\.txt)?$/i.test(file.name))
     ?? loaded.find((file) => !/(?:^|[\\/])(?:library|runtime|include|header)[^\\/]*\.(?:asm|z80|s)$/i.test(file.name)) ?? loaded[0];
   if (likelyMain) $("mainFile").value = likelyMain.name;
   $("source").value = likelyMain?.text || "";
-  $("metrics").innerHTML = `<span>${loaded.length} file${loaded.length === 1 ? "" : "s"}</span>`;
+  $("metrics").innerHTML = loaded.length
+    ? `<span>${loaded.length} file${loaded.length === 1 ? "" : "s"}</span><span>${looksLikeCvbasic(likelyMain?.text || "") ? "CVBasic source detected" : "Z80 assembly detected"}</span>`
+    : "<span>FAILED: no CVBasic or Z80 listing was recognized in the dropped files.</span>";
 }
 
 $("files").addEventListener("change", (event) => accept(event.target.files));
@@ -79,10 +84,17 @@ $("run").addEventListener("click", async () => {
       optimization: $("optimization").value,
       compression: $("compression").value
     }) });
+    const responseText = await response.text();
     if (!response.headers.get("content-type")?.includes("application/json")) {
-      throw new Error("the Node backend is unavailable; GitHub Pages alone cannot compile CVBasic");
+      const returnedHtml = /^\s*</.test(responseText);
+      throw new Error(`the Node backend is unavailable at ${response.url} (${response.status})${returnedHtml ? "; an HTML page was returned instead of compiler JSON" : ""}. GitHub Pages alone cannot compile CVBasic`);
     }
-    const result = await response.json();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      throw new Error(`the backend returned invalid JSON from ${response.url}`);
+    }
     if (!response.ok) throw new Error(result.error);
     lastResult = result;
     $("refined").value = result.refinedAsm;
