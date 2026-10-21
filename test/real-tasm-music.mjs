@@ -38,4 +38,4 @@ const assembled = await assembleAmysCVAssembly({ "main.asm": native }, "main.asm
 assert.equal(assembled.ok, true, assembled.log);
 const result = await validateWithTelemarkTasm(renderAssemblyDialect(native, "tasm"), Buffer.from(assembled.binary), executable);
 assert.equal(result.status, "PASS_REAL_TASM", result.error);
-console.log(`PASS: ${result.banner} produced ${result.bytes} byte-identical music bytes.`);
+console.log(`PASS: ${result.banner} produced byte-identical specialized music bytes.`);

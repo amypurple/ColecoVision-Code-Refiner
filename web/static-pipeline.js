@@ -4,6 +4,8 @@ import { refineAssembly } from "../src/refiner.mjs";
 import { detectAssemblyDialect } from "../src/dialect.mjs";
 import { renderAssemblyDialect } from "../src/dialect-output.mjs";
 import { annotateOptimizedAssembly } from "../src/humanize.mjs";
+import { convertCvbasicMusicToTinyAsm } from "../src/convert-cvbasic-music.mjs";
+import { synthesizeCvbasicMusicMicroRuntime } from "../src/cvbasic-music-micro-runtime.mjs";
 import { compileCvbasicInBrowser } from "./cvbasic-browser.js?v=20261021-browser-compiler-2";
 
 function occupiedBytes(result) {
@@ -51,6 +53,31 @@ export async function runStaticPipeline(input) {
   const isBasic = requestedKind === "cvbasic" || (requestedKind === "auto" && inferredBasic);
   const originalFiles = Object.fromEntries(input.files.map((file) => [file.name, file.text]));
   const source = originalFiles[input.main];
+  let tinySound = null;
+  let amyMusic = null;
+  if (isBasic && /\bMUSIC\b/i.test(source)) {
+    try {
+      const converted = convertCvbasicMusicToTinyAsm(source, {
+        prefix: input.main.replace(/\.[^.]+$/, ""),
+        skipUnsupportedBlocks: true
+      });
+      tinySound = {
+        asm: converted.asm,
+        blocks: converted.blocks,
+        rejectedBlocks: converted.rejectedBlocks,
+        soundTableLabel: converted.soundTableLabel,
+        firstSongLabel: converted.firstSongLabel,
+        status: converted.rejectedBlocks.length ? "PARTIAL_APPROXIMATE" : "APPROXIMATE",
+        approximations: [
+          "Notes are mapped to the nearest Tiny Sound period.",
+          "Tempo rows are rescaled from CVBasic's 50 Hz convention to 60 Hz.",
+          "Tone 1/2 use compact Tiny envelopes; Tone 3 and M1/M2/M3 use synchronized BIOS streams."
+        ]
+      };
+    } catch (error) {
+      tinySound = { asm: null, blocks: [], rejectedBlocks: [{ name: "input", reason: error.message }], status: "REJECTED", approximations: [] };
+    }
+  }
   const compiled = isBasic ? await compileCvbasicInBrowser(source) : { assembly: source, diagnostics: "" };
   const generatedName = isBasic ? "main.asm" : input.main;
   const baselineFiles = isBasic ? { "main.asm": compiled.assembly } : { ...originalFiles };
@@ -68,14 +95,38 @@ export async function runStaticPipeline(input) {
   const rendered = renderAssemblyDialect(humanized.text, outputDialect);
   const renderedResult = await assemble({ "main.asm": rendered }, "main.asm", outputDialect);
   if (!sameBytes(optimized.bytes, renderedResult.bytes)) throw new Error(`${outputDialect} export changed the optimized ROM bytes`);
+  if (isBasic && input.runtime === "amy-os7" && /\bMUSIC\b/i.test(source)) {
+    try {
+      const synthesized = synthesizeCvbasicMusicMicroRuntime(source, { prefix: input.main.replace(/\.[^.]+$/, "") });
+      // The Tiny Sound micro-wrapper is already specialized. Keep its symbolic
+      // call targets intact; the generic optimizer currently emits section
+      // offsets for a few internal calls, which are not safe absolute Z80 ABI.
+      const nativeMusic = await assemble({ "main.asm": synthesized.assembly }, "main.asm", "native");
+      const nativeMusicAsm = synthesized.assembly;
+      const outputMusicAsm = renderAssemblyDialect(nativeMusicAsm, outputDialect);
+      const outputMusic = await assemble({ "main.asm": outputMusicAsm }, "main.asm", outputDialect);
+      if (!sameBytes(nativeMusic.bytes, outputMusic.bytes)) throw new Error(`${outputDialect} changed the Amy/OS7 music ROM bytes`);
+      amyMusic = {
+        status: "PASS_DIALECT_BYTE_IDENTITY_AWAITING_RUNTIME",
+        asm: outputMusicAsm,
+        rom: base64(outputMusic.bytes),
+        bytes: occupiedBytes(outputMusic),
+        outputDialect,
+        byteIdentical: true,
+        report: { ...synthesized.report, optimization: "specialized-wrapper" }
+      };
+    } catch (error) {
+      amyMusic = { status: "REJECTED", asm: null, rom: null, bytes: null, error: error.message };
+    }
+  }
   const baselineSize = occupiedBytes(baseline);
   const optimizedSize = occupiedBytes(optimized);
   return {
     mainName: input.main,
     sourceKind: isBasic ? "cvbasic-bas" : "assembly",
     generatedAsm: isBasic ? compiled.assembly : null,
-    tinySound: null,
-    amyMusic: null,
+    tinySound,
+    amyMusic,
     dialect,
     outputDialect,
     policy: { runtime: input.runtime, optimization: input.optimization, compression: "preserve" },

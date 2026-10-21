@@ -138,20 +138,17 @@ createServer(async (request, response) => {
             outputFilename: "music.amy-os7.rom",
             outputMode: "binary",
             targetPlatform: "raw",
-            optimizerEnabled: optimizationProfile.optimizerEnabled,
-            optimizerConfig: optimizationProfile.optimizerConfig
+            optimizerEnabled: false
           });
           if (!assembled.ok) throw new Error(assembled.log || "Amy/OS7 music assembly failed");
-          const optimizedAssembly = optimizationProfile.optimizerEnabled && assembled.optimizedAsm
-            ? assembled.optimizedAsm
-            : synthesized.assembly;
+          const optimizedAssembly = synthesized.assembly;
           const romEnd = Number(assembled.symbols?.ROM_END);
           amyMusic = {
             status: "ASSEMBLED_AWAITING_RUNTIME",
             asm: optimizedAssembly,
             rom: Buffer.from(assembled.binary).toString("base64"),
             bytes: Number.isFinite(romEnd) ? romEnd - 0x8000 : assembled.binary.length,
-            report: { ...synthesized.report, optimization: optimizationProfile.effectiveLevel },
+            report: { ...synthesized.report, optimization: "specialized-wrapper" },
             nativeBinary: Buffer.from(assembled.binary)
           };
         } catch (error) {

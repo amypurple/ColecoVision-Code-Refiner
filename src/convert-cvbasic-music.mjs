@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const TINY_NOTE_PERIODS = [
   0x03ff, 0x03f8, 0x03db, 0x03bf, 0x03a4, 0x0389, 0x036f, 0x0356,
@@ -577,6 +574,10 @@ function usage() {
 }
 
 async function main() {
+  const [{ default: fs }, { default: path }] = await Promise.all([
+    import("node:fs/promises"),
+    import("node:path")
+  ]);
   const args = parseArgs(process.argv.slice(2));
   if (args.help || !args.input) {
     console.log(usage());
@@ -616,7 +617,10 @@ async function main() {
   }
 }
 
-const isCli = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isCli = typeof process !== "undefined" && process.argv?.[1]
+  ? await Promise.all([import("node:path"), import("node:url")]).then(([pathModule, urlModule]) =>
+      pathModule.default.resolve(process.argv[1]) === urlModule.fileURLToPath(import.meta.url))
+  : false;
 if (isCli) {
   main().catch((error) => {
     console.error(error.message || error);

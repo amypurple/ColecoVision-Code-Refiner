@@ -58,9 +58,11 @@ The `web` interface supports two execution levels:
 - **Standalone browser mode** runs the Emscripten CVBasic compiler, Amy assembler
   and optimizer entirely in the browser. It accepts CVBasic or Z80 source, emits
   optimized assembly and builds a ROM on static hosting such as GitHub Pages.
+  Recognized CVBasic music programs can also emit a standalone Tiny Sound module
+  or a complete Amy/OS7 Tiny Sound cartridge as TASM, GASM80 or Amy assembly and ROM.
 - **Proof service mode** is enabled automatically when `npm start` provides
-  `/api/refine`. It adds deterministic emulator proof, complete micro-runtime
-  synthesis, Tiny Sound conversion and verified Pletter-to-ZX0 replacement.
+  `/api/refine`. It adds deterministic emulator proof, real Telemark TASM
+  validation and verified Pletter-to-ZX0 replacement.
 
 When publishing with GitHub Pages, publish the repository root so `web`, `src` and
 `vendor` retain their relative layout. The root `index.html` opens the tool under

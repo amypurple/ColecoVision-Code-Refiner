@@ -173,7 +173,7 @@ $("run").addEventListener("click", async () => {
         (option.value === "purecvrom" && (!result.pureCvRom || report.pureCv?.status === "REJECTED_RUNTIME"));
     }
     if (result.policy?.runtime === "amy-os7") {
-      $("saveAction").value = result.amyMusic?.rom ? "amymusicrom" : "purecvrom";
+      $("saveAction").value = result.amyMusic?.asm ? "amymusic" : (result.pureCvAsm ? "purecv" : "optimized");
       const preferredView = result.amyMusic?.asm ? "amymusic" : "purecv";
       document.querySelector(`[data-output-tab="${preferredView}"]`)?.click();
     } else if ($("saveAction").selectedOptions[0]?.disabled) {
@@ -205,7 +205,7 @@ const saveActions = {
   os7: () => download("game.os7-engineered.asm", lastResult.os7Asm, "text/plain"),
   purecv: () => download("game.pure-cv.asm", lastResult.pureCvAsm, "text/plain"),
   tinysound: () => download("game.tiny-sound.asm", lastResult.tinySound.asm, "text/plain"),
-  amymusic: () => download(`game.amy-os7-music.${lastResult.amyMusic.outputDialect || "asm"}.asm`, lastResult.amyMusic.asm, "text/plain"),
+  amymusic: () => download(`game.amy-os7-music.${lastResult.amyMusic.outputDialect || "native"}.asm`, lastResult.amyMusic.asm, "text/plain"),
   rom: () => {
     const raw = atob(lastResult.optimizedRom);
     download("game.candidate.rom", Uint8Array.from(raw, (character) => character.charCodeAt(0)), "application/octet-stream");

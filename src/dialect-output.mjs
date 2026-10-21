@@ -1,5 +1,5 @@
 const DIRECTIVE = /^(\s*)\.?(org|db|dw|byte|word|end)(\b.*)$/i;
-const LABELED_DIRECTIVE = /^(\s*[A-Za-z_.$?][\w.$?]*:\s*)\.?(db|dw|byte|word)(\b.*)$/i;
+const LABELED_DIRECTIVE = /^(\s*)([A-Za-z_.$?][\w.$?]*)\s*:?\s+\.?(db|dw|byte|word)(\b.*)$/i;
 const EQUATE = /^(\s*)([A-Za-z_.$?][\w.$?]*)\s*:?[ \t]+\.?equ\s+([^;]+?)(\s*(?:;.*)?)$/i;
 
 function tasmLabel(scope, localName) {
@@ -54,6 +54,22 @@ function indentTasmInstructions(lines) {
     if (!/^[A-Za-z_?]/.test(line)) return line;
     if (/^[A-Za-z_?][\w.$?]*\s*:/.test(line)) return line;
     return `    ${line}`;
+  });
+}
+
+function renderTasmNumericLiterals(lines) {
+  return lines.map((line) => {
+    const semicolon = line.indexOf(";");
+    const code = semicolon < 0 ? line : line.slice(0, semicolon);
+    const comment = semicolon < 0 ? "" : line.slice(semicolon);
+    if (/^\s*(?:im|bit|set|res)\b/i.test(code)) return line;
+    const rendered = code.replace(/(?<![A-Za-z0-9_.$])([0-9]+)(?![A-Za-z0-9_.$])/g, (token, digits) => {
+      const value = Number.parseInt(digits, 10);
+      if (!Number.isFinite(value) || value > 0xFFFF) return token;
+      const width = value <= 0xFF ? 2 : 4;
+      return `$${value.toString(16).toUpperCase().padStart(width, "0")}`;
+    });
+    return `${rendered}${comment}`;
   });
 }
 
@@ -126,8 +142,9 @@ export function renderAssemblyDialect(source, dialect) {
     }
     const labeled = line.match(LABELED_DIRECTIVE);
     if (labeled) {
-      const name = labeled[2].toLowerCase();
-      return `${labeled[1]}${dialect === "tasm" ? `.${name.toUpperCase()}` : name}${labeled[3]}`;
+      const name = labeled[3].toLowerCase();
+      const separator = dialect === "native" ? " " : ": ";
+      return `${labeled[1]}${labeled[2]}${separator}${dialect === "tasm" ? `.${name.toUpperCase()}` : name}${labeled[4]}`;
     }
     const directive = line.match(DIRECTIVE);
     if (!directive) return line;
@@ -136,7 +153,7 @@ export function renderAssemblyDialect(source, dialect) {
     return `${directive[1]}${name}${directive[3]}`;
   });
   if (dialect === "tasm") {
-    output = indentTasmInstructions(normalizeTasmSymbolLengths(renderTasmStorage(normalizeTasmLocalLabels(output))));
+    output = indentTasmInstructions(normalizeTasmSymbolLengths(renderTasmNumericLiterals(renderTasmStorage(normalizeTasmLocalLabels(output)))));
     output.unshift("; Assemble with Telemark TASM: tasm -80 -b -fFF source.asm output.rom");
     if (!output.some((line) => /^\s*\.END(?:\s|$)/i.test(line))) output.push("    .END");
   }

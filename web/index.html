@@ -20,19 +20,19 @@
       <label>Main file<select id="mainFile"></select></label>
       <button id="run">REFINE + PROVE</button>
       <div class="save-controls" aria-label="Save generated file">
-        <label>Save as<select id="saveAction" disabled>
+        <label>Download<select id="saveAction" disabled>
           <option value="optimized">Human optimized ASM</option>
           <option value="compact">Compact CV/OS7 ASM</option>
           <option value="refined">Specialized ASM</option>
           <option value="os7">OS7-engineered ASM</option>
           <option value="purecv">Pure CV micro-runtime ASM</option>
           <option value="tinysound">Tiny Sound module</option>
-          <option value="amymusic">Amy/OS7 music ASM</option>
+          <option value="amymusic">Amy/OS7 Tiny Sound ASM</option>
           <option value="rom">Optimized ROM candidate</option>
           <option value="compactrom">Compact CV/OS7 ROM</option>
           <option value="os7rom">OS7-engineered ROM</option>
           <option value="purecvrom">Pure CV micro-runtime ROM</option>
-          <option value="amymusicrom">Amy/OS7 music ROM</option>
+          <option value="amymusicrom">Amy/OS7 Tiny Sound ROM</option>
         </select></label>
         <button class="icon-button" id="save" disabled title="Save selected result" aria-label="Save selected result"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5V3Zm3 2v5h8V5H8Zm0 10v4h8v-4H8Z"/></svg><b>Save</b></button>
       </div>
@@ -86,6 +86,6 @@
       if (metrics) metrics.innerHTML = `<span>FAILED: ${event.reason?.message || event.reason}</span>`;
     });
   </script>
-  <script type="module" src="app.js?v=20261021-static-cvbasic-3"></script>
+  <script type="module" src="app.js?v=20261021-static-cvbasic-4"></script>
 </body>
 </html>

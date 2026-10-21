@@ -54,7 +54,7 @@ value rb 1
   assert.match(output, /EX AF,AF'/);
   assert.match(output, /JOY1: \.EQU \$FC ; TASM folded from/);
   assert.match(output, /buffer:\s+\.ORG \$\+\$20/);
-  assert.match(output, /value:\s+\.ORG \$\+1/);
+  assert.match(output, /value:\s+\.ORG \$\+\$01/);
   assert.match(output, /\.FILL \(\(\(\$ \+ \$1FFF\) & \$E000\)-\$\),\$FF/);
   assert.match(output, /^\s*\.END\s*$/m);
   assert.doesNotMatch(output, /^\s*\.1:|\brb\b|^\s*align\b/im);
@@ -75,4 +75,19 @@ test("renders column-one instructions and long symbols for real Telemark TASM", 
   assert.ok(definition[1].length <= 31, definition[1]);
   assert.match(output, new RegExp(`^\\s+jp ${definition[1]}$`, "mi"));
   assert.doesNotMatch(output, new RegExp(`^${longLabel}:$`, "m"));
+});
+
+test("restores labels omitted before optimizer data directives for TASM", () => {
+  const output = renderAssemblyDialect("TextPrompt db 65,66\nWords dw $1234\n", "tasm");
+  assert.match(output, /^TextPrompt: \.DB \$41,\$42$/m);
+  assert.match(output, /^Words: \.DW \$1234$/m);
+});
+
+test("renders optimizer decimal literals as conventional TASM hexadecimal", () => {
+  const output = renderAssemblyDialect("PORT equ 190\norg 32768\nld bc,482\nout (191),a\ncall 303\n", "tasm");
+  assert.match(output, /^PORT: \.EQU \$BE$/m);
+  assert.match(output, /^\s*\.ORG \$8000$/m);
+  assert.match(output, /^\s*ld bc,\$01E2$/mi);
+  assert.match(output, /^\s*out \(\$BF\),a$/mi);
+  assert.match(output, /^\s*call \$012F$/mi);
 });

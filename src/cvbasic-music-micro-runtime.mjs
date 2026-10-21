@@ -12,7 +12,7 @@ function extractText(source, pattern, description) {
 }
 
 function stringBytes(text) {
-  return [...Buffer.from(text, "ascii")].map(value => hex(value)).join(",");
+  return [...String(text)].map(character => hex(character.charCodeAt(0) & 0x7f)).join(",");
 }
 
 function callsFor(indexes) {
