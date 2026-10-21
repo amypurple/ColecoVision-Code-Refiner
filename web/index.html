@@ -17,6 +17,7 @@
       <label>ASM dialect<select id="dialect"><option value="auto">Auto detect</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Output<select id="outputDialect"><option value="same">Same as input</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Wrapper<select id="runtime"><option value="auto">Auto</option><option value="cvbasic">CVBasic</option><option value="amy-os7">Amy / OS7</option></select></label>
+      <label>Tiny Sound<select id="tinySound"><option value="on">On</option><option value="off">Off</option></select></label>
       <label>Optimize<select id="optimization"><option value="balanced">Balanced</option><option value="off">Off</option><option value="aggressive">Aggressive</option></select></label>
       <label>Compression<select id="compression"><option value="preserve">Preserve</option><option value="pletter-zx0">Pletter to ZX0</option></select></label>
       <label>Main file<select id="mainFile"></select></label>
@@ -88,6 +89,6 @@
       if (metrics) metrics.innerHTML = `<span>FAILED: ${event.reason?.message || event.reason}</span>`;
     });
   </script>
-  <script type="module" src="app.js?v=20261021-static-cvbasic-4"></script>
+  <script type="module" src="app.js?v=20261021-tiny-toggle-1"></script>
 </body>
 </html>

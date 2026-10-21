@@ -53,9 +53,10 @@ export async function runStaticPipeline(input) {
   const isBasic = requestedKind === "cvbasic" || (requestedKind === "auto" && inferredBasic);
   const originalFiles = Object.fromEntries(input.files.map((file) => [file.name, file.text]));
   const source = originalFiles[input.main];
+  const tinySoundEnabled = input.tinySound !== "off";
   let tinySound = null;
   let amyMusic = null;
-  if (isBasic && /\bMUSIC\b/i.test(source)) {
+  if (tinySoundEnabled && isBasic && /\bMUSIC\b/i.test(source)) {
     try {
       const converted = convertCvbasicMusicToTinyAsm(source, {
         prefix: input.main.replace(/\.[^.]+$/, ""),
@@ -95,7 +96,10 @@ export async function runStaticPipeline(input) {
   const rendered = renderAssemblyDialect(humanized.text, outputDialect);
   const renderedResult = await assemble({ "main.asm": rendered }, "main.asm", outputDialect);
   if (!sameBytes(optimized.bytes, renderedResult.bytes)) throw new Error(`${outputDialect} export changed the optimized ROM bytes`);
-  if (isBasic && input.runtime === "amy-os7" && /\bMUSIC\b/i.test(source)) {
+  if (!tinySoundEnabled && isBasic && input.runtime === "amy-os7" && /\bMUSIC\b/i.test(source)) {
+    throw new Error("Amy/OS7 music conversion requires Tiny Sound; enable Tiny Sound or select the CVBasic wrapper");
+  }
+  if (tinySoundEnabled && isBasic && input.runtime === "amy-os7" && /\bMUSIC\b/i.test(source)) {
     try {
       const synthesized = synthesizeCvbasicMusicMicroRuntime(source, { prefix: input.main.replace(/\.[^.]+$/, "") });
       // The Tiny Sound micro-wrapper is already specialized. Keep its symbolic
@@ -130,7 +134,7 @@ export async function runStaticPipeline(input) {
     amyMusic,
     dialect,
     outputDialect,
-    policy: { runtime: input.runtime, optimization: input.optimization, compression: "preserve" },
+    policy: { runtime: input.runtime, tinySound: tinySoundEnabled ? "on" : "off", optimization: input.optimization, compression: "preserve" },
     compression: { policy: "preserve", changed: false, summary: "compression preserved" },
     detection,
     report: {

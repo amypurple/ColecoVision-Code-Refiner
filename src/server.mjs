@@ -104,12 +104,13 @@ createServer(async (request, response) => {
       const inferredBasic = /\.bas(?:\.txt)?$/i.test(mainName) || (/\.txt$/i.test(mainName) && looksLikeCvbasicSource(files[mainName]));
       const isBasic = requestedSourceKind === "cvbasic" || (requestedSourceKind === "auto" && inferredBasic);
       const runtimePolicy = ["auto", "cvbasic", "amy-os7"].includes(input.runtime) ? input.runtime : "auto";
+      const tinySoundEnabled = input.tinySound !== "off";
       const optimization = ["off", "balanced", "aggressive"].includes(input.optimization) ? input.optimization : "balanced";
       const optimizationProfile = getOptimizationProfile(optimization, files[mainName]);
       const compressionPolicy = input.compression === "pletter-zx0" ? "pletter-zx0" : "preserve";
       let tinySound = null;
       let amyMusic = null;
-      if (isBasic && /\bMUSIC\b/i.test(files[mainName])) {
+      if (tinySoundEnabled && isBasic && /\bMUSIC\b/i.test(files[mainName])) {
         try {
           const converted = convertCvbasicMusicToTinyAsm(files[mainName], {
             prefix: mainName.replace(/\.[^.]+$/, ""),
@@ -154,6 +155,9 @@ createServer(async (request, response) => {
         } catch (error) {
           amyMusic = { status: "REJECTED", asm: null, rom: null, bytes: null, error: error.message };
         }
+      }
+      if (!tinySoundEnabled && isBasic && runtimePolicy === "amy-os7" && /\bMUSIC\b/i.test(files[mainName])) {
+        throw new Error("Amy/OS7 music conversion requires Tiny Sound; enable Tiny Sound or select the CVBasic wrapper");
       }
       const originalMainSource = isBasic ? await compileBasic(files[mainName]) : files[mainName];
       let compression = { policy: compressionPolicy, changed: false, summary: "compression preserved", assets: [] };
@@ -255,7 +259,7 @@ createServer(async (request, response) => {
         amyMusic,
         dialect,
         outputDialect,
-        policy: { runtime: runtimePolicy, optimization, compression: compressionPolicy },
+        policy: { runtime: runtimePolicy, tinySound: tinySoundEnabled ? "on" : "off", optimization, compression: compressionPolicy },
         compression,
         detection,
         report: proof.report,

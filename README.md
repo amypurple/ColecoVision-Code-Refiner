@@ -16,11 +16,16 @@ and keeps unproven rewrites separate from byte-identical output.
 - Removes only proven unreachable CVBasic runtime groups.
 - Recognizes direct VDP code and proposes or applies OS7 calls when their contracts fit.
 - Converts supported `DEFINE VRAM PLETTER` assets to ZX0 with a mandatory data round trip.
-- Synthesizes a proven Amy/OS7 Tiny Sound profile for compatible CVBasic programs.
+- Can enable or disable Tiny Sound conversion explicitly. Compatible programs can
+  emit a standalone module or a complete Amy/OS7 Tiny Sound cartridge; disabling
+  it preserves CVBasic's original music engine.
 - Can compare framebuffer, VRAM and VDP registers when a legal ColecoVision BIOS is supplied.
 
 The tool fails closed: unsupported program shapes remain unchanged or are reported as
 not applicable. It does not silently delete behavior to produce a smaller ROM.
+Balanced and Aggressive optimization also preserve CVBasic's `$+N` and `$-N`
+program-counter-relative jumps at their original width; shortening those expressions
+changes their target and is therefore unsafe.
 
 ## Run locally
 

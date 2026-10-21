@@ -103,6 +103,7 @@ $("run").addEventListener("click", async () => {
       dialect: $("dialect").value,
       outputDialect: $("outputDialect").value,
       runtime: $("runtime").value,
+      tinySound: $("tinySound").value,
       optimization: $("optimization").value,
       compression: $("compression").value,
       looksLikeCvbasic

@@ -1159,6 +1159,16 @@ export class Z80Optimizer {
                             }
 
                             if (canConvert) {
+                                // `$+N` and `$-N` are source-position-relative expressions.
+                                // Replacing the three-byte JP with a two-byte JR changes the
+                                // expression's reference position and can branch into an opcode.
+                                // Keep these explicit CVBasic/GASM80 idioms in their original form.
+                                if (/\$\s*[+-]\s*(?:\$[0-9a-f]+|\d+)/i.test(token.sourceLine || '')) {
+                                    optimizerLog(`  [JP→JR] Line ${token.lineNumber}: JP ${targetLabel} - SKIP (PC-relative source expression)`, 'debug');
+                                    pc += this.estimateTokenByteSize(token);
+                                    optimized.push(token);
+                                    continue;
+                                }
                                 // CRITICAL: Never optimize JP in ColecoVision ROM header + NMI region ($8000-$8023)
                                 // Header ($8000-$8020): Fixed 3-byte RST vector slots
                                 // NMI ($8021-$8023): 3-byte NMI handler (must stay 3 bytes)
