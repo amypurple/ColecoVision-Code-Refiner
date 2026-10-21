@@ -17,6 +17,11 @@ function looksLikeCvbasic(source) {
 }
 
 async function reportServerCapabilities() {
+  if (window.CVR_PROOF_SERVICE !== true) {
+    backendAvailable = false;
+    $("metrics").innerHTML = "<span>Standalone browser mode</span><span>CVBasic ready</span><span>Runtime proof unavailable</span>";
+    return;
+  }
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
     if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error();

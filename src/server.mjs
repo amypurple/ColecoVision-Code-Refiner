@@ -273,7 +273,13 @@ createServer(async (request, response) => {
     if (request.method !== "GET") return json(response, 405, { error: "method not allowed" });
     const relative = request.url === "/" ? "index.html" : request.url.slice(1).split("?")[0];
     if (!/^[\w./-]+$/.test(relative) || relative.includes("..")) return json(response, 400, { error: "invalid path" });
-    const contents = await readFile(resolve(root, relative));
+    let contents = await readFile(resolve(root, relative));
+    if (relative === "index.html") {
+      contents = Buffer.from(contents.toString("utf8").replace(
+        "window.CVR_PROOF_SERVICE = false;",
+        "window.CVR_PROOF_SERVICE = true;"
+      ));
+    }
     response.writeHead(200, {
       "content-type": types[extname(relative)] || "application/octet-stream",
       "cache-control": "no-store"
