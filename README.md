@@ -53,18 +53,29 @@ assembler's compatibility mode rather than the external Telemark executable.
 
 ## Put it online
 
-This is a Node web application, not a static GitHub Pages site: CVBasic compilation
-and ROM proof run on the server. GitHub can host the repository, while a Node host
-or the included Docker image runs the application.
+The `web` interface supports two execution levels:
+
+- **Standalone browser mode** runs the Emscripten CVBasic compiler, Amy assembler
+  and optimizer entirely in the browser. It accepts CVBasic or Z80 source, emits
+  optimized assembly and builds a ROM on static hosting such as GitHub Pages.
+- **Proof service mode** is enabled automatically when `npm start` provides
+  `/api/refine`. It adds deterministic emulator proof, complete micro-runtime
+  synthesis, Tiny Sound conversion and verified Pletter-to-ZX0 replacement.
+
+When publishing with GitHub Pages, publish the repository root so `web`, `src` and
+`vendor` retain their relative layout. The root `index.html` opens the tool under
+`web/` automatically.
+
+For the complete proof service, use a Node host or the included Docker image.
 
 ```bash
 docker build -t colecovision-code-refiner .
 docker run --rm -p 8091:8091 colecovision-code-refiner
 ```
 
-For public deployment, do not upload a copyrighted BIOS. The service operates
-without one and labels emulator-dependent proof as unavailable. Set `HOST=0.0.0.0`
-on a remote host; the Docker image already does this.
+For public deployment, do not upload a copyrighted BIOS. Standalone mode does not
+need one. The service also operates without one and labels emulator-dependent proof
+as unavailable. Set `HOST=0.0.0.0` on a remote host; Docker already does this.
 
 ## Proof levels
 
@@ -93,6 +104,8 @@ GASM80 binaries. Runtime tests require `COLECOVISION_BIOS`.
 
 - CVBasic 0.9.2 and GASM80 are included under their upstream terms in
   `third_party/cvbasic`.
+- The browser compiler is derived from Haroldo Okumura's open-source
+  CVBasic-emscripten port; its license is preserved under `web/vendor/cvbasic`.
 - The Amy assembler/optimizer and selected runtime knowledge originate in Amy Studio.
 - RetroCompress-Lite codec modules provide the verified Pletter and ZX0 transforms.
 - The GearColeco test core is used only when runtime proof is enabled.

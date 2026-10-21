@@ -11,6 +11,7 @@
   <main>
     <section class="toolbar">
       <label class="drop" id="drop"><input id="files" type="file" accept=".bas,.txt,.asm,.z80,.s" multiple><b>Open BAS / ASM</b><small>drop listings anywhere</small></label>
+      <label>Source<select id="sourceKind"><option value="auto">Auto detect</option><option value="cvbasic">CVBasic</option><option value="assembly">Z80 assembly</option></select></label>
       <label>ASM dialect<select id="dialect"><option value="auto">Auto detect</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Output<select id="outputDialect"><option value="same">Same as input</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Wrapper<select id="runtime"><option value="auto">Auto</option><option value="cvbasic">CVBasic</option><option value="amy-os7">Amy / OS7</option></select></label>
@@ -75,6 +76,16 @@
     </section>
   </main>
   <div class="drop-overlay" id="dropOverlay" aria-hidden="true"><div><strong>DROP CVBASIC OR Z80 FILES</strong><span>CVBasic source, GASM80/TASM assembly and includes</span></div></div>
-  <script type="module" src="app.js?v=20261021-cvbasic-drop"></script>
+  <script>
+    window.addEventListener("error", (event) => {
+      const metrics = document.getElementById("metrics");
+      if (metrics) metrics.innerHTML = `<span>LOAD FAILED: ${event.message}</span>`;
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      const metrics = document.getElementById("metrics");
+      if (metrics) metrics.innerHTML = `<span>FAILED: ${event.reason?.message || event.reason}</span>`;
+    });
+  </script>
+  <script type="module" src="app.js?v=20261021-static-cvbasic-3"></script>
 </body>
 </html>

@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node src/server.mjs",
+    "start:static": "node test/static-server.mjs",
     "test": "node test/run.mjs",
     "smoke": "node test/real-cvbasic-smoke.mjs",
     "build:face": "node src/build-face-fixture.mjs",

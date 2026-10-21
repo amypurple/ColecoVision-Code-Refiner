@@ -19,7 +19,7 @@ import { getOptimizationProfile } from "../vendor/studio-core/optimization.js";
 
 const root = resolve(import.meta.dirname, "../web");
 const port = Number(process.env.PORT || 8091);
-const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 const biosPath = process.env.COLECOVISION_BIOS ? resolve(process.env.COLECOVISION_BIOS) : null;
 const colecoBios = biosPath ? await readFile(biosPath).catch(() => null) : null;
 const run = promisify(execFile);
@@ -100,7 +100,9 @@ createServer(async (request, response) => {
       const files = Object.fromEntries((input.files ?? []).map((file) => [file.name, file.text]));
       const mainName = input.main || input.files?.[0]?.name;
       if (!mainName || !files[mainName]) throw new Error("select a main assembly file");
-      const isBasic = /\.bas(?:\.txt)?$/i.test(mainName) || (/\.txt$/i.test(mainName) && looksLikeCvbasicSource(files[mainName]));
+      const requestedSourceKind = ["auto", "cvbasic", "assembly"].includes(input.sourceKind) ? input.sourceKind : "auto";
+      const inferredBasic = /\.bas(?:\.txt)?$/i.test(mainName) || (/\.txt$/i.test(mainName) && looksLikeCvbasicSource(files[mainName]));
+      const isBasic = requestedSourceKind === "cvbasic" || (requestedSourceKind === "auto" && inferredBasic);
       const runtimePolicy = ["auto", "cvbasic", "amy-os7"].includes(input.runtime) ? input.runtime : "auto";
       const optimization = ["off", "balanced", "aggressive"].includes(input.optimization) ? input.optimization : "balanced";
       const optimizationProfile = getOptimizationProfile(optimization, files[mainName]);

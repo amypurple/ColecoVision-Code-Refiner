@@ -1,6 +1,9 @@
+import { runStaticPipeline } from "./static-pipeline.js";
+
 const $ = (id) => document.getElementById(id);
 let loaded = [];
 let lastResult = null;
+let backendAvailable = false;
 
 function looksLikeCvbasic(source) {
   const tests = [
@@ -18,10 +21,12 @@ async function reportServerCapabilities() {
     const response = await fetch("/api/health", { cache: "no-store" });
     if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error();
     const health = await response.json();
+    backendAvailable = true;
     const capabilities = health.capabilities || {};
     $("metrics").innerHTML = `<span>Server ready</span><span>CVBasic ${capabilities.cvbasic ? "ready" : "unavailable"}</span><span>BIOS proof ${capabilities.colecoVisionBios ? "ready" : "optional"}</span><span>Telemark TASM ${capabilities.telemarkTasm ? "ready" : "optional"}</span>`;
   } catch {
-    $("metrics").innerHTML = "<span>SERVER REQUIRED: run npm start or deploy the Node application; a static GitHub Pages copy cannot compile CVBasic.</span>";
+    backendAvailable = false;
+    $("metrics").innerHTML = "<span>Standalone browser mode</span><span>CVBasic ready</span><span>Runtime proof unavailable</span>";
   }
 }
 
@@ -75,27 +80,36 @@ $("run").addEventListener("click", async () => {
   $("run").disabled = true;
   $("metrics").innerHTML = "<span>Analyzing...</span>";
   try {
-    const response = await fetch("/api/refine", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+    const request = {
       files: loaded,
       main: $("mainFile").value,
+      sourceKind: $("sourceKind").value,
       dialect: $("dialect").value,
       outputDialect: $("outputDialect").value,
       runtime: $("runtime").value,
       optimization: $("optimization").value,
-      compression: $("compression").value
-    }) });
-    const responseText = await response.text();
-    if (!response.headers.get("content-type")?.includes("application/json")) {
-      const returnedHtml = /^\s*</.test(responseText);
-      throw new Error(`the Node backend is unavailable at ${response.url} (${response.status})${returnedHtml ? "; an HTML page was returned instead of compiler JSON" : ""}. GitHub Pages alone cannot compile CVBasic`);
-    }
+      compression: $("compression").value,
+      looksLikeCvbasic
+    };
     let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      throw new Error(`the backend returned invalid JSON from ${response.url}`);
+    if (backendAvailable) {
+      const serializable = { ...request };
+      delete serializable.looksLikeCvbasic;
+      const response = await fetch("/api/refine", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(serializable) });
+      const responseText = await response.text();
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        const returnedHtml = /^\s*</.test(responseText);
+        throw new Error(`the compiler API failed at ${response.url} (${response.status})${returnedHtml ? "; HTML was returned instead of JSON" : ""}`);
+      }
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error(`the backend returned invalid JSON from ${response.url}`);
+      }
+      if (!response.ok) throw new Error(result.error);
+    } else {
+      result = await runStaticPipeline(request);
     }
-    if (!response.ok) throw new Error(result.error);
     lastResult = result;
     $("refined").value = result.refinedAsm;
     $("optimized").value = result.optimizedAsm;
@@ -118,7 +132,7 @@ $("run").addEventListener("click", async () => {
     const tinyMetric = tiny ? `${tiny.blocks.length} Tiny tune${tiny.blocks.length === 1 ? "" : "s"}, ${tiny.rejectedBlocks.length} rejected` : "no Tiny Sound source";
     const amyMusicProof = amyMusic?.telemark?.byteIdentical ? "real TASM verified" : (amyMusic?.byteIdentical ? "byte-identical" : amyMusic?.status);
     const amyMusicMetric = amyMusic?.bytes ? `${amyMusic.bytes} Amy/OS7 ${amyMusic.outputDialect?.toUpperCase() || "native"} music ROM (${amyMusicProof})` : "no Amy/OS7 music ROM";
-    $("metrics").innerHTML = [`${report.baseline.bytes} bytes baseline`, `${report.optimized?.bytes ?? report.specialized.bytes} ${report.optimization.effective}`, report.compact ? `${report.compact.bytes} compact (${report.compact.savedVsBaseline} saved, ${report.compact.status})` : "no compact candidate", os7Metric, pureMetric, tinyMetric, amyMusicMetric, result.compression?.summary || "compression preserved", report.fidelity.identical ? "byte-identical specialization" : "fidelity failed", `${report.optimized?.humanAnnotations?.length ?? 0} byte-role notes`, `${detected.origin} source`, `${result.dialect.toUpperCase()} ${detected.confidence} confidence`, `exports ${result.outputDialect.toUpperCase()}`].map((value) => `<span>${value}</span>`).join("");
+    $("metrics").innerHTML = [result.standalone ? "standalone browser" : "proof service", `${report.baseline.bytes} bytes baseline`, `${report.optimized?.bytes ?? report.specialized.bytes} ${report.optimization.effective}`, report.compact ? `${report.compact.bytes} compact (${report.compact.savedVsBaseline} saved, ${report.compact.status})` : "no compact candidate", os7Metric, pureMetric, tinyMetric, amyMusicMetric, result.compression?.summary || "compression preserved", report.fidelity.identical ? "byte-identical specialization" : "fidelity failed", `${report.optimized?.humanAnnotations?.length ?? 0} byte-role notes`, `${detected.origin} source`, `${result.dialect.toUpperCase()} ${detected.confidence} confidence`, `exports ${result.outputDialect.toUpperCase()}`].map((value) => `<span>${value}</span>`).join("");
     $("contracts").innerHTML = cards(report.analysis.routineContracts, (item) => `<b>${item.contract.service}</b> at line ${item.line}<br>${item.contract.notes || "Contract known."}<br><small>clobbers: ${item.contract.clobbers.join(", ") || "none"}</small>`, "No known OS7/Amy wrapper calls.");
     const engineered = report.os7Assessment?.transformations?.map((item) => ({
       title: item.kind === "STATIC_NAME_RECTANGLE_TO_PUTOBJ" ? "Static tile rectangle -> PUTOBJ" : `${item.kind.includes("READ") ? "Read" : "Write"} VRAM through OS7`,
