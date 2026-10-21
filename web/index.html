@@ -11,7 +11,7 @@
   <main>
     <section class="toolbar">
       <label class="drop" id="drop"><input id="files" type="file" accept=".bas,.bas.txt,.asm,.z80,.s" multiple><b>Open BAS / ASM</b><small>drop files anywhere</small></label>
-      <label>Dialect<select id="dialect"><option value="auto">Auto detect</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
+      <label>ASM dialect<select id="dialect"><option value="auto">Auto detect</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Output<select id="outputDialect"><option value="same">Same as input</option><option value="tasm">TASM</option><option value="gasm80">GASM80</option><option value="native">Amy native</option></select></label>
       <label>Wrapper<select id="runtime"><option value="auto">Auto</option><option value="cvbasic">CVBasic</option><option value="amy-os7">Amy / OS7</option></select></label>
       <label>Optimize<select id="optimization"><option value="balanced">Balanced</option><option value="off">Off</option><option value="aggressive">Aggressive</option></select></label>
@@ -43,7 +43,7 @@
       <button data-view-tab="analysis">Analysis</button>
     </nav>
     <section class="workspace">
-      <article class="source-panel is-view-active" data-view-panel="source"><h2>Source <small>CVBasic or Z80 assembly</small></h2><textarea id="source" spellcheck="false"></textarea></article>
+      <article class="source-panel is-view-active" data-view-panel="source"><h2>Source <small>CVBasic or Z80 assembly</small></h2><textarea id="source" spellcheck="false" placeholder="Open a file, or paste CVBasic / Z80 assembly here..."></textarea></article>
       <article class="output-panel" data-view-panel="output">
         <div class="panel-tabs" aria-label="Generated assembly">
           <button data-output-tab="refined">Specialized</button>
@@ -75,6 +75,6 @@
     </section>
   </main>
   <div class="drop-overlay" id="dropOverlay" aria-hidden="true"><div><strong>DROP CVBASIC OR Z80 FILES</strong><span>CVBasic source, GASM80/TASM assembly and includes</span></div></div>
-  <script type="module" src="app.js?v=20261021-pipeline-options"></script>
+  <script type="module" src="app.js?v=20261021-cvbasic-paste"></script>
 </body>
 </html>

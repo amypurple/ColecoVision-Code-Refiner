@@ -42,7 +42,8 @@ async function compileBasic(source) {
       await run(cvbasicExecutable, [basic, assembly, cvbasicDirectory], { windowsHide: true });
     } catch (error) {
       if (error.code === "ENOENT") throw new Error(`CVBasic executable not found at ${cvbasicExecutable}. Build third_party/cvbasic or set CVBASIC_EXECUTABLE.`);
-      throw error;
+      const diagnostics = `${error.stdout || ""}${error.stderr || ""}`.trim();
+      throw new Error(diagnostics || `CVBasic compilation failed: ${error.message}`);
     }
     return await readFile(assembly, "utf8");
   } finally {

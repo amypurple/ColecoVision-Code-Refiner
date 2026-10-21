@@ -8,7 +8,7 @@ and keeps unproven rewrites separate from byte-identical output.
 
 ## What it does
 
-- Accepts `.bas`, `.bas.txt`, `.asm`, `.z80` and `.s` files by picker or drag and drop.
+- Accepts pasted source or `.bas`, `.bas.txt`, `.asm`, `.z80` and `.s` files by picker or drag and drop.
 - Compiles CVBasic locally, or starts directly from generated assembly.
 - Exports readable Amy, GASM80 or Telemark TASM assembly.
 - Offers Off, Balanced and Aggressive optimization profiles.

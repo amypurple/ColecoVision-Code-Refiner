@@ -2,6 +2,29 @@ const $ = (id) => document.getElementById(id);
 let loaded = [];
 let lastResult = null;
 
+function looksLikeCvbasic(source) {
+  const tests = [
+    /^\s*(?:MODE|SCREEN|CLS|PRINT|DEFINE|DIM|BITMAP|SPRITE|MUSIC|SOUND|PLAY)\b/im,
+    /^\s*(?:IF\b.*\bTHEN|FOR\b.*\bTO|DO\s*$|LOOP\s*$|WHILE\b|GOTO\b)/im,
+    /^\s*[A-Za-z_][\w$]*\s*:\s*(?:DATA|MUSIC)\b/im,
+    /\bCONT\d?\.(?:UP|DOWN|LEFT|RIGHT|BUTTON\d*)\b/i,
+    /\b(?:PRINT|PUT|VPOKE|VPEEK)\s+AT\b/i
+  ];
+  return tests.filter((pattern) => pattern.test(source)).length >= 2;
+}
+
+async function reportServerCapabilities() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error();
+    const health = await response.json();
+    const capabilities = health.capabilities || {};
+    $("metrics").innerHTML = `<span>Server ready</span><span>CVBasic ${capabilities.cvbasic ? "ready" : "unavailable"}</span><span>BIOS proof ${capabilities.colecoVisionBios ? "ready" : "optional"}</span><span>Telemark TASM ${capabilities.telemarkTasm ? "ready" : "optional"}</span>`;
+  } catch {
+    $("metrics").innerHTML = "<span>SERVER REQUIRED: run npm start or deploy the Node application; a static GitHub Pages copy cannot compile CVBasic.</span>";
+  }
+}
+
 async function accept(fileList) {
   const accepted = [...fileList].filter((file) => /(?:\.bas(?:\.txt)?|\.(?:asm|z80|s))$/i.test(file.name));
   loaded = await Promise.all(accepted.map(async (file) => ({ name: file.webkitRelativePath || file.name, text: await file.text() })));
@@ -31,9 +54,19 @@ function cards(items, formatter, empty) {
 }
 
 $("run").addEventListener("click", async () => {
-  if (!loaded.length) return;
+  const pastedSource = $("source").value;
+  if (!loaded.length && !pastedSource.trim()) {
+    $("metrics").innerHTML = "<span>FAILED: open a CVBasic/ASM file or paste source code first.</span>";
+    return;
+  }
+  if (!loaded.length) {
+    const name = looksLikeCvbasic(pastedSource) ? "pasted.bas" : "pasted.asm";
+    loaded = [{ name, text: pastedSource }];
+    $("mainFile").replaceChildren(new Option(name, name));
+    $("mainFile").value = name;
+  }
   const main = loaded.find((file) => file.name === $("mainFile").value);
-  if (main) main.text = $("source").value;
+  if (main) main.text = pastedSource;
   $("run").disabled = true;
   $("metrics").innerHTML = "<span>Analyzing...</span>";
   try {
@@ -46,6 +79,9 @@ $("run").addEventListener("click", async () => {
       optimization: $("optimization").value,
       compression: $("compression").value
     }) });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("the Node backend is unavailable; GitHub Pages alone cannot compile CVBasic");
+    }
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
     lastResult = result;
@@ -119,7 +155,10 @@ $("run").addEventListener("click", async () => {
     }
     $("save").disabled = false;
   } catch (error) {
-    $("metrics").innerHTML = `<span>FAILED: ${error.message}</span>`;
+    const message = error instanceof TypeError && /fetch/i.test(error.message)
+      ? "the Node backend is unavailable; run npm start or deploy the Docker/Node application"
+      : error.message;
+    $("metrics").innerHTML = `<span>FAILED: ${message}</span>`;
   } finally { $("run").disabled = false; }
 });
 
@@ -130,6 +169,8 @@ function download(name, contents, type) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
+
+reportServerCapabilities();
 
 const saveActions = {
   refined: () => download("game.refined.asm", lastResult.refinedAsm, "text/plain"),
